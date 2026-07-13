@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,18 +40,25 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedModelsIdRoute = AuthenticatedModelsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedModelsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/models': typeof AuthenticatedModelsRoute
+  '/models': typeof AuthenticatedModelsRouteWithChildren
+  '/models/$id': typeof AuthenticatedModelsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/models': typeof AuthenticatedModelsRoute
+  '/models': typeof AuthenticatedModelsRouteWithChildren
+  '/models/$id': typeof AuthenticatedModelsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,13 +66,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/models': typeof AuthenticatedModelsRoute
+  '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
+  '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/models'
+  fullPaths: '/' | '/auth' | '/dashboard' | '/models' | '/models/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/models'
+  to: '/' | '/auth' | '/dashboard' | '/models' | '/models/$id'
   id:
     | '__root__'
     | '/'
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/models'
+    | '/_authenticated/models/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,17 +127,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/models/$id': {
+      id: '/_authenticated/models/$id'
+      path: '/$id'
+      fullPath: '/models/$id'
+      preLoaderRoute: typeof AuthenticatedModelsIdRouteImport
+      parentRoute: typeof AuthenticatedModelsRoute
+    }
   }
 }
 
+interface AuthenticatedModelsRouteChildren {
+  AuthenticatedModelsIdRoute: typeof AuthenticatedModelsIdRoute
+}
+
+const AuthenticatedModelsRouteChildren: AuthenticatedModelsRouteChildren = {
+  AuthenticatedModelsIdRoute: AuthenticatedModelsIdRoute,
+}
+
+const AuthenticatedModelsRouteWithChildren =
+  AuthenticatedModelsRoute._addFileChildren(AuthenticatedModelsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
+  AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedModelsRoute: AuthenticatedModelsRoute,
+  AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
