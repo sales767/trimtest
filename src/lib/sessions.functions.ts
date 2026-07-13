@@ -71,6 +71,43 @@ export const createSession = createServerFn({ method: "POST" })
     return row;
   });
 
+export const startMeasurement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      model_id: z.string().uuid(),
+      serial_number: z.string().min(1).max(80).transform((s) => s.trim()),
+      notes: z.string().max(2000).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    // Find existing wing by (model_id, serial_number), else create it.
+    const { data: existing, error: fe } = await context.supabase
+      .from("wings")
+      .select("id")
+      .eq("model_id", data.model_id)
+      .eq("serial_number", data.serial_number)
+      .maybeSingle();
+    if (fe) throw new Error(fe.message);
+    let wingId = existing?.id as string | undefined;
+    if (!wingId) {
+      const { data: w, error: we } = await context.supabase
+        .from("wings")
+        .insert({ model_id: data.model_id, serial_number: data.serial_number, created_by: context.userId })
+        .select("id")
+        .single();
+      if (we) throw new Error(we.message);
+      wingId = w.id;
+    }
+    const { data: row, error } = await context.supabase
+      .from("measurement_sessions")
+      .insert({ wing_id: wingId, technician_id: context.userId, notes: data.notes ?? null })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { session_id: row.id, wing_id: wingId };
+  });
+
 export const getSession = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
