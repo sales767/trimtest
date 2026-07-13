@@ -78,13 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Niviuk Measure — Internal wing measurement" },
-      { name: "description", content: "Internal Niviuk tool to measure paraglider lines against factory specifications." },
+      { title: "Trim test" },
+      { name: "description", content: "Internal tool to measure paraglider lines against factory specifications." },
       { name: "author", content: "Niviuk" },
-      { property: "og:title", content: "Niviuk Measure" },
-      { property: "og:description", content: "Internal Niviuk tool to measure paraglider lines against factory specifications." },
+      { property: "og:title", content: "Trim test" },
+      { property: "og:description", content: "Internal tool to measure paraglider lines against factory specifications." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Trim test" },
+      { name: "twitter:description", content: "Internal tool to measure paraglider lines against factory specifications." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c3af93dd-b780-48f9-8688-48e27d45406f/id-preview-b1e0deae--27c7e110-a441-41a8-a3c3-fc76b10466a6.lovable.app-1783936549571.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c3af93dd-b780-48f9-8688-48e27d45406f/id-preview-b1e0deae--27c7e110-a441-41a8-a3c3-fc76b10466a6.lovable.app-1783936549571.png" },
     ],
     links: [
       {
