@@ -12,19 +12,12 @@ export const isCurrentUserAdmin = createServerFn({ method: "GET" })
     return { isAdmin: Boolean(data) };
   });
 
-async function assertAdmin(context: { supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }; userId: string }) {
-  const { data, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin only");
-}
-
 export const listTechnicians = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin, error: re } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (re) throw new Error(re.message);
+    if (!isAdmin) throw new Error("Forbidden: admin only");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [profRes, rolesRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, email, full_name, created_at").order("created_at", { ascending: false }),
@@ -49,7 +42,9 @@ export const setUserAdmin = createServerFn({ method: "POST" })
     return { user_id: o.user_id, is_admin: o.is_admin };
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin, error: re } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (re) throw new Error(re.message);
+    if (!isAdmin) throw new Error("Forbidden: admin only");
     if (data.user_id === context.userId && !data.is_admin) {
       throw new Error("You cannot remove your own admin role");
     }
