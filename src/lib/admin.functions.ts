@@ -1,15 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function checkIsAdmin(supabase: {
-  from: (t: string) => {
-    select: (c: string) => {
-      eq: (k: string, v: string) => {
-        eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }> };
-      };
-    };
-  };
-}, userId: string): Promise<boolean> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function checkIsAdmin(supabase: any, userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("user_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
   if (error) throw new Error(error.message);
