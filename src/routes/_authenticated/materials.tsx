@@ -42,7 +42,8 @@ function MaterialsPage() {
   }, [data.shortenings]);
 
   const mUpsert = useMutation({
-    mutationFn: (v: Parameters<typeof upsertMaterial>[0]["data"]) => upsertMaterial({ data: v }),
+    mutationFn: (v: { id?: string; name: string; diameter_mm?: number | null; notes?: string | null }) =>
+      upsertMaterial({ data: v }),
     onSuccess: () => { invalidate(); toast.success("Material saved"); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -52,7 +53,8 @@ function MaterialsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const lUpsert = useMutation({
-    mutationFn: (v: Parameters<typeof upsertLoopType>[0]["data"]) => upsertLoopType({ data: v }),
+    mutationFn: (v: { id?: string; name: string; description?: string | null; sort_order?: number }) =>
+      upsertLoopType({ data: v }),
     onSuccess: () => { invalidate(); toast.success("Loop type saved"); },
     onError: (e: Error) => toast.error(e.message),
   });
