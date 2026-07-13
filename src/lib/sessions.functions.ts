@@ -88,7 +88,7 @@ export const updateSession = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { status?: "draft" | "complete" | "published"; notes?: string | null } = {};
     if (data.status) patch.status = data.status;
     if (data.notes !== undefined) patch.notes = data.notes;
     const { data: row, error } = await context.supabase
