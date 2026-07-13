@@ -17,6 +17,12 @@ export const listSessions = createServerFn({ method: "GET" })
 export const listAllSessions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { data: isAdmin, error: re } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (re) throw new Error(re.message);
+    if (!isAdmin) throw new Error("Forbidden: admin only");
     const { data, error } = await context.supabase
       .from("measurement_sessions")
       .select(
