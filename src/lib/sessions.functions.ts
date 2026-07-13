@@ -91,7 +91,7 @@ export const updateSession = createServerFn({ method: "POST" })
     const patch: {
       status?: "draft" | "complete" | "published";
       notes?: string | null;
-      share_token?: string | null;
+      share_token?: string;
     } = {};
     if (data.status) patch.status = data.status;
     if (data.notes !== undefined) patch.notes = data.notes;
