@@ -14,6 +14,46 @@ export const listSessions = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const listAllSessions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("measurement_sessions")
+      .select(
+        "id, session_date, status, notes, technician_id, updated_at, created_at, share_token, wing:wings(id, serial_number, model:wing_models(id, brand, name, size))",
+      )
+      .order("session_date", { ascending: false })
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const sessions = data ?? [];
+    const techIds = Array.from(new Set(sessions.map((s) => s.technician_id).filter(Boolean)));
+    let profiles: Array<{ id: string; email: string | null; full_name: string | null }> = [];
+    if (techIds.length > 0) {
+      const { data: p, error: pe } = await context.supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", techIds);
+      if (pe) throw new Error(pe.message);
+      profiles = p ?? [];
+    }
+    const sessionIds = sessions.map((s) => s.id);
+    let counts = new Map<string, number>();
+    if (sessionIds.length > 0) {
+      const { data: ms, error: me } = await context.supabase
+        .from("measurements")
+        .select("session_id")
+        .in("session_id", sessionIds);
+      if (me) throw new Error(me.message);
+      for (const m of ms ?? []) counts.set(m.session_id, (counts.get(m.session_id) ?? 0) + 1);
+    }
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+    return sessions.map((s) => ({
+      ...s,
+      technician: profileMap.get(s.technician_id) ?? null,
+      measurement_count: counts.get(s.id) ?? 0,
+    }));
+  });
+
 export const createSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ wing_id: z.string().uuid(), notes: z.string().max(2000).optional() }).parse(d))

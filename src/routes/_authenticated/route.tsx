@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, LogOut, Plus } from "lucide-react";
+import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, Database, LogOut, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -21,6 +21,7 @@ const nav = [
   { to: "/models", label: "Wing models", icon: Layers },
   { to: "/wings", label: "Wings", icon: Plane },
   { to: "/sessions", label: "Measurements", icon: ClipboardList },
+  { to: "/database", label: "Database", icon: Database },
 ];
 
 function AuthedLayout() {
