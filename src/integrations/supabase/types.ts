@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      line_materials: {
+        Row: {
+          created_at: string
+          diameter_mm: number | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          diameter_mm?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          diameter_mm?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       line_specs: {
         Row: {
           created_at: string
@@ -21,6 +48,7 @@ export type Database = {
           id: string
           label: string
           line_group: Database["public"]["Enums"]["line_group"]
+          material_id: string | null
           model_id: string
           row_index: number
           sort_order: number
@@ -33,6 +61,7 @@ export type Database = {
           id?: string
           label: string
           line_group: Database["public"]["Enums"]["line_group"]
+          material_id?: string | null
           model_id: string
           row_index?: number
           sort_order?: number
@@ -45,6 +74,7 @@ export type Database = {
           id?: string
           label?: string
           line_group?: Database["public"]["Enums"]["line_group"]
+          material_id?: string | null
           model_id?: string
           row_index?: number
           sort_order?: number
@@ -53,6 +83,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "line_specs_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "line_materials"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "line_specs_model_id_fkey"
             columns: ["model_id"]
             isOneToOne: false
@@ -60,6 +97,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      loop_shortenings: {
+        Row: {
+          created_at: string
+          id: string
+          loop_type_id: string
+          material_id: string
+          shortening_mm: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          loop_type_id: string
+          material_id: string
+          shortening_mm: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          loop_type_id?: string
+          material_id?: string
+          shortening_mm?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loop_shortenings_loop_type_id_fkey"
+            columns: ["loop_type_id"]
+            isOneToOne: false
+            referencedRelation: "loop_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loop_shortenings_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "line_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loop_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       measurement_sessions: {
         Row: {

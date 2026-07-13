@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, Database, Users, LogOut, Plus } from "lucide-react";
+import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, Database, Users, LogOut, Plus, Cable } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { isCurrentUserAdmin } from "@/lib/admin.functions";
@@ -27,6 +27,7 @@ const nav = [
 
 const adminNav = [
   { to: "/database", label: "Database", icon: Database },
+  { to: "/materials", label: "Materials & loops", icon: Cable },
   { to: "/users", label: "Users & access", icon: Users },
 ];
 
