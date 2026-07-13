@@ -1,22 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function checkIsAdmin(supabase: any, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 export const isCurrentUserAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (error) throw new Error(error.message);
-    return { isAdmin: Boolean(data) };
+    const isAdmin = await checkIsAdmin(context.supabase, context.userId);
+    return { isAdmin };
   });
 
 export const listTechnicians = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin, error: re } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    if (re) throw new Error(re.message);
+    const isAdmin = await checkIsAdmin(context.supabase, context.userId);
     if (!isAdmin) throw new Error("Forbidden: admin only");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [profRes, rolesRes] = await Promise.all([
@@ -42,8 +45,7 @@ export const setUserAdmin = createServerFn({ method: "POST" })
     return { user_id: o.user_id, is_admin: o.is_admin };
   })
   .handler(async ({ data, context }) => {
-    const { data: isAdmin, error: re } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    if (re) throw new Error(re.message);
+    const isAdmin = await checkIsAdmin(context.supabase, context.userId);
     if (!isAdmin) throw new Error("Forbidden: admin only");
     if (data.user_id === context.userId && !data.is_admin) {
       throw new Error("You cannot remove your own admin role");
