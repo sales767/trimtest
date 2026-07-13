@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AuthenticatedWingsRouteImport } from './routes/_authenticated/wings'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedWingsIdRouteImport } from './routes/_authenticated/wings.$id'
 import { Route as AuthenticatedSessionsIdRouteImport } from './routes/_authenticated/sessions.$id'
 import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
 
@@ -31,6 +33,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWingsRoute = AuthenticatedWingsRouteImport.update({
@@ -53,6 +60,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWingsIdRoute = AuthenticatedWingsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedWingsRoute,
+} as any)
 const AuthenticatedSessionsIdRoute = AuthenticatedSessionsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -70,9 +82,11 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
-  '/wings': typeof AuthenticatedWingsRoute
+  '/wings': typeof AuthenticatedWingsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
+  '/wings/$id': typeof AuthenticatedWingsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -80,9 +94,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
-  '/wings': typeof AuthenticatedWingsRoute
+  '/wings': typeof AuthenticatedWingsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
+  '/wings/$id': typeof AuthenticatedWingsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -92,9 +108,11 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/sessions': typeof AuthenticatedSessionsRouteWithChildren
-  '/_authenticated/wings': typeof AuthenticatedWingsRoute
+  '/_authenticated/wings': typeof AuthenticatedWingsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
   '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
   '/_authenticated/sessions/$id': typeof AuthenticatedSessionsIdRoute
+  '/_authenticated/wings/$id': typeof AuthenticatedWingsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,8 +123,10 @@ export interface FileRouteTypes {
     | '/models'
     | '/sessions'
     | '/wings'
+    | '/share/$token'
     | '/models/$id'
     | '/sessions/$id'
+    | '/wings/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -115,8 +135,10 @@ export interface FileRouteTypes {
     | '/models'
     | '/sessions'
     | '/wings'
+    | '/share/$token'
     | '/models/$id'
     | '/sessions/$id'
+    | '/wings/$id'
   id:
     | '__root__'
     | '/'
@@ -126,14 +148,17 @@ export interface FileRouteTypes {
     | '/_authenticated/models'
     | '/_authenticated/sessions'
     | '/_authenticated/wings'
+    | '/share/$token'
     | '/_authenticated/models/$id'
     | '/_authenticated/sessions/$id'
+    | '/_authenticated/wings/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -157,6 +182,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wings': {
@@ -186,6 +218,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/wings/$id': {
+      id: '/_authenticated/wings/$id'
+      path: '/$id'
+      fullPath: '/wings/$id'
+      preLoaderRoute: typeof AuthenticatedWingsIdRouteImport
+      parentRoute: typeof AuthenticatedWingsRoute
     }
     '/_authenticated/sessions/$id': {
       id: '/_authenticated/sessions/$id'
@@ -228,18 +267,29 @@ const AuthenticatedSessionsRouteWithChildren =
     AuthenticatedSessionsRouteChildren,
   )
 
+interface AuthenticatedWingsRouteChildren {
+  AuthenticatedWingsIdRoute: typeof AuthenticatedWingsIdRoute
+}
+
+const AuthenticatedWingsRouteChildren: AuthenticatedWingsRouteChildren = {
+  AuthenticatedWingsIdRoute: AuthenticatedWingsIdRoute,
+}
+
+const AuthenticatedWingsRouteWithChildren =
+  AuthenticatedWingsRoute._addFileChildren(AuthenticatedWingsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRouteWithChildren
-  AuthenticatedWingsRoute: typeof AuthenticatedWingsRoute
+  AuthenticatedWingsRoute: typeof AuthenticatedWingsRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRouteWithChildren,
-  AuthenticatedWingsRoute: AuthenticatedWingsRoute,
+  AuthenticatedWingsRoute: AuthenticatedWingsRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -249,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ShareTokenRoute: ShareTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -5,7 +5,7 @@ import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -58,6 +58,7 @@ function SessionDetail() {
   const { data } = useSuspenseQuery(sessionQuery(id));
   const { session, lines, measurements } = data;
   const wing = session.wing as {
+    id: string;
     serial_number: string;
     owner_note: string | null;
     model: { id: string; brand: string; name: string; size: string | null; cells: number | null };
@@ -152,6 +153,20 @@ function SessionDetail() {
   const measuredCount = measured.length;
   const outOfTol = measured.filter((r) => r.cls !== "ok").length;
 
+  const shareToken = (session as { share_token: string | null }).share_token;
+  const shareUrl =
+    shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/share/${shareToken}`
+      : null;
+
+  function copyShare() {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(
+      () => toast.success("Share link copied"),
+      () => toast.error("Could not copy link"),
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -181,9 +196,28 @@ function SessionDetail() {
               </>
             )}
             {session.status === "published" && (
-              <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
-                Unpublish
-              </Button>
+              <>
+                {shareUrl && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={copyShare}>
+                      <Copy className="h-4 w-4 mr-2" /> Copy link
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={shareUrl} target="_blank" rel="noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" /> Open protocol
+                      </a>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={shareUrl} target="_blank" rel="noreferrer">
+                        <Printer className="h-4 w-4 mr-2" /> PDF
+                      </a>
+                    </Button>
+                  </>
+                )}
+                <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
+                  Unpublish
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this session?")) delMut.mutate(); }}>
               <Trash2 className="h-4 w-4" />
