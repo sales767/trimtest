@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Ruler, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Ruler, ArrowRight, History } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -137,6 +137,11 @@ function WingsPage() {
                       <td className="px-4 py-3">{model ? `${model.brand} ${model.name}${model.size ? ` · ${model.size}` : ""}` : "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground truncate max-w-xs">{w.owner_note ?? "—"}</td>
                       <td className="px-2 py-2 text-right whitespace-nowrap">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to="/wings/$id" params={{ id: w.id }}>
+                            <History className="h-3.5 w-3.5 mr-1" /> History
+                          </Link>
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => startSession.mutate(w.id)} disabled={startSession.isPending}>
                           <Ruler className="h-3.5 w-3.5 mr-1" /> Measure
                           <ArrowRight className="h-3.5 w-3.5 ml-1" />
