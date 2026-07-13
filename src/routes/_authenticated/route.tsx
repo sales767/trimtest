@@ -21,12 +21,10 @@ export const Route = createFileRoute("/_authenticated")({
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/models", label: "Wing models", icon: Layers },
-  { to: "/wings", label: "Wings", icon: Plane },
   { to: "/sessions", label: "Measurements", icon: ClipboardList },
 ];
 
 const adminNav = [
-  { to: "/database", label: "Database", icon: Database },
   { to: "/materials", label: "Materials & loops", icon: Cable },
   { to: "/users", label: "Users & access", icon: Users },
 ];
