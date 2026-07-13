@@ -88,9 +88,25 @@ export const updateSession = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: { status?: "draft" | "complete" | "published"; notes?: string | null } = {};
+    const patch: {
+      status?: "draft" | "complete" | "published";
+      notes?: string | null;
+      share_token?: string | null;
+    } = {};
     if (data.status) patch.status = data.status;
     if (data.notes !== undefined) patch.notes = data.notes;
+    if (data.status === "published") {
+      const { data: existing } = await context.supabase
+        .from("measurement_sessions")
+        .select("share_token")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (!existing?.share_token) {
+        const bytes = new Uint8Array(18);
+        crypto.getRandomValues(bytes);
+        patch.share_token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+      }
+    }
     const { data: row, error } = await context.supabase
       .from("measurement_sessions").update(patch).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
@@ -104,4 +120,28 @@ export const deleteSession = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("measurement_sessions").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const getPublicProtocol = createServerFn({ method: "GET" })
+  .inputValidator((d) => z.object({ token: z.string().min(8).max(64) }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: session, error } = await supabaseAdmin
+      .from("measurement_sessions")
+      .select(
+        "id, session_date, status, notes, share_token, wing:wings(serial_number, owner_note, model:wing_models(id, brand, name, size, cells))",
+      )
+      .eq("share_token", data.token)
+      .eq("status", "published")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!session) throw new Error("Protocol not found or not published");
+    const modelId = (session.wing as { model: { id: string } }).model.id;
+    const [lr, mr] = await Promise.all([
+      supabaseAdmin.from("line_specs").select("*").eq("model_id", modelId).order("line_group").order("sort_order").order("label"),
+      supabaseAdmin.from("measurements").select("*").eq("session_id", session.id),
+    ]);
+    if (lr.error) throw new Error(lr.error.message);
+    if (mr.error) throw new Error(mr.error.message);
+    return { session, lines: lr.data ?? [], measurements: mr.data ?? [] };
   });
