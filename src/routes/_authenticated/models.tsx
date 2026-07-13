@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { listModels, upsertModel, deleteModel } from "@/lib/models.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
@@ -12,29 +11,29 @@ import { Plus, Trash2, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const modelsQuery = (fn: ReturnType<typeof useServerFn<typeof listModels>>) =>
-  queryOptions({ queryKey: ["models"], queryFn: () => fn() });
+const modelsQuery = queryOptions({
+  queryKey: ["models"],
+  queryFn: () => listModels(),
+});
 
 export const Route = createFileRoute("/_authenticated/models")({
   component: ModelsPage,
+  loader: ({ context }) => context.queryClient.ensureQueryData(modelsQuery),
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-8">Not found</div>,
 });
 
 function ModelsPage() {
-  const list = useServerFn(listModels);
-  const upsert = useServerFn(upsertModel);
-  const del = useServerFn(deleteModel);
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data } = useSuspenseQuery(modelsQuery(list));
+  const { data } = useSuspenseQuery(modelsQuery);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ brand: "Niviuk", name: "", size: "", cells: "", notes: "" });
 
   const createMut = useMutation({
     mutationFn: () =>
-      upsert({
+      upsertModel({
         data: {
           brand: form.brand,
           name: form.name,
@@ -53,7 +52,7 @@ function ModelsPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: (id: string) => del({ data: { id } }),
+    mutationFn: (id: string) => deleteModel({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["models"] }),
     onError: (e: Error) => toast.error(e.message),
   });
@@ -158,13 +157,3 @@ function ModelsPage() {
     </div>
   );
 }
-
-ModelsPage.getQuery = modelsQuery;
-
-Route.options.loader = ({ context }) => {
-  const list = listModels;
-  return context.queryClient.ensureQueryData({
-    queryKey: ["models"],
-    queryFn: () => list(),
-  });
-};
