@@ -2,16 +2,22 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { listAllSessions } from "@/lib/sessions.functions";
+import { isCurrentUserAdmin } from "@/lib/admin.functions";
 import { PageHeader } from "./route";
 import { ArrowRight, Download, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const dbQuery = queryOptions({ queryKey: ["all-sessions"], queryFn: () => listAllSessions() });
+const meAdminQuery = queryOptions({ queryKey: ["is-admin"], queryFn: () => isCurrentUserAdmin() });
 
 export const Route = createFileRoute("/_authenticated/database")({
   component: DatabasePage,
-  loader: ({ context }) => context.queryClient.ensureQueryData(dbQuery),
+  loader: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(meAdminQuery);
+    if (!me.isAdmin) throw new Error("Forbidden: admin only");
+    await context.queryClient.ensureQueryData(dbQuery);
+  },
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-8">Not found</div>,
 });

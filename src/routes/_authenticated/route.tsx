@@ -2,9 +2,11 @@ import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, Database, LogOut, Plus } from "lucide-react";
+import { Gauge, LayoutDashboard, Layers, Plane, ClipboardList, Database, Users, LogOut, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { isCurrentUserAdmin } from "@/lib/admin.functions";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -21,7 +23,11 @@ const nav = [
   { to: "/models", label: "Wing models", icon: Layers },
   { to: "/wings", label: "Wings", icon: Plane },
   { to: "/sessions", label: "Measurements", icon: ClipboardList },
+];
+
+const adminNav = [
   { to: "/database", label: "Database", icon: Database },
+  { to: "/users", label: "Users & access", icon: Users },
 ];
 
 function AuthedLayout() {
@@ -29,6 +35,12 @@ function AuthedLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState<string | null>(null);
+  const { data: me } = useQuery({
+    queryKey: ["is-admin"],
+    queryFn: () => isCurrentUserAdmin(),
+    staleTime: 60_000,
+  });
+  const isAdmin = Boolean(me?.isAdmin);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -67,6 +79,31 @@ function AuthedLayout() {
               </Link>
             );
           })}
+          {isAdmin && (
+            <>
+              <div className="pt-4 pb-1 px-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+                Admin
+              </div>
+              {adminNav.map((n) => {
+                const active = pathname === n.to || pathname.startsWith(n.to + "/");
+                return (
+                  <Link
+                    key={n.to}
+                    to={n.to}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-muted",
+                    )}
+                  >
+                    <n.icon className="h-4 w-4" />
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
         <div className="p-3 border-t border-border">
           <div className="text-xs text-muted-foreground truncate mb-2">{email}</div>

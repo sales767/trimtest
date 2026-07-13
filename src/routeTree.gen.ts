@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AuthenticatedWingsRouteImport } from './routes/_authenticated/wings'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedDatabaseRouteImport } from './routes/_authenticated/database'
@@ -44,6 +45,11 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
 const AuthenticatedWingsRoute = AuthenticatedWingsRouteImport.update({
   id: '/wings',
   path: '/wings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/database': typeof AuthenticatedDatabaseRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/users': typeof AuthenticatedUsersRoute
   '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/database': typeof AuthenticatedDatabaseRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/users': typeof AuthenticatedUsersRoute
   '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/_authenticated/database': typeof AuthenticatedDatabaseRoute
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/database'
     | '/models'
     | '/sessions'
+    | '/users'
     | '/wings'
     | '/share/$token'
     | '/models/$id'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/database'
     | '/models'
     | '/sessions'
+    | '/users'
     | '/wings'
     | '/share/$token'
     | '/models/$id'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/_authenticated/database'
     | '/_authenticated/models'
     | '/_authenticated/sessions'
+    | '/_authenticated/users'
     | '/_authenticated/wings'
     | '/share/$token'
     | '/_authenticated/models/$id'
@@ -208,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/wings'
       fullPath: '/wings'
       preLoaderRoute: typeof AuthenticatedWingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sessions': {
@@ -302,6 +321,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDatabaseRoute: typeof AuthenticatedDatabaseRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRouteWithChildren
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedWingsRoute: typeof AuthenticatedWingsRouteWithChildren
 }
 
@@ -310,6 +330,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDatabaseRoute: AuthenticatedDatabaseRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRouteWithChildren,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedWingsRoute: AuthenticatedWingsRouteWithChildren,
 }
 
