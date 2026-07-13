@@ -47,10 +47,10 @@ function SessionsPage() {
   const { data: me } = useSuspenseQuery(meAdminQuery);
   const isAdmin = Boolean(me.isAdmin);
   const { data: models } = useSuspenseQuery(modelsQuery);
-  const activeQuery = isAdmin ? allSessionsQuery : mySessionsQuery;
+  const activeQuery = (isAdmin ? allSessionsQuery : mySessionsQuery) as typeof allSessionsQuery;
   const { data: rowsData } = useSuspenseQuery(activeQuery);
-  const rows = (rowsData ?? []) as (AdminRow | MineRow)[];
-  const adminData = isAdmin ? (rowsData as AdminRow[] | undefined) : undefined;
+  const rows = (rowsData ?? []) as unknown as (AdminRow | MineRow)[];
+  const adminData = isAdmin ? ((rowsData ?? []) as unknown as AdminRow[]) : undefined;
 
   const qc = useQueryClient();
   const navigate = useNavigate();
