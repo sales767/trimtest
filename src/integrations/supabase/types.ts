@@ -14,16 +14,281 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      line_specs: {
+        Row: {
+          created_at: string
+          factory_length_mm: number
+          id: string
+          label: string
+          line_group: Database["public"]["Enums"]["line_group"]
+          model_id: string
+          row_index: number
+          sort_order: number
+          tolerance_mm: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          factory_length_mm: number
+          id?: string
+          label: string
+          line_group: Database["public"]["Enums"]["line_group"]
+          model_id: string
+          row_index?: number
+          sort_order?: number
+          tolerance_mm?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          factory_length_mm?: number
+          id?: string
+          label?: string
+          line_group?: Database["public"]["Enums"]["line_group"]
+          model_id?: string
+          row_index?: number
+          sort_order?: number
+          tolerance_mm?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_specs_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "wing_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      measurement_sessions: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          session_date: string
+          share_token: string
+          status: Database["public"]["Enums"]["session_status"]
+          technician_id: string
+          updated_at: string
+          wing_id: string
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date?: string
+          share_token?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          technician_id: string
+          updated_at?: string
+          wing_id: string
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date?: string
+          share_token?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          technician_id?: string
+          updated_at?: string
+          wing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "measurement_sessions_wing_id_fkey"
+            columns: ["wing_id"]
+            isOneToOne: false
+            referencedRelation: "wings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      measurements: {
+        Row: {
+          created_at: string
+          deviation_mm: number | null
+          id: string
+          line_spec_id: string
+          measured_mm: number
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deviation_mm?: number | null
+          id?: string
+          line_spec_id: string
+          measured_mm: number
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deviation_mm?: number | null
+          id?: string
+          line_spec_id?: string
+          measured_mm?: number
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "measurements_line_spec_id_fkey"
+            columns: ["line_spec_id"]
+            isOneToOne: false
+            referencedRelation: "line_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "measurements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "measurement_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wing_models: {
+        Row: {
+          brand: string
+          cells: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          size: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string
+          cells?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          cells?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          model_id: string
+          owner_note: string | null
+          serial_number: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          model_id: string
+          owner_note?: string | null
+          serial_number: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          model_id?: string
+          owner_note?: string | null
+          serial_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wings_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "wing_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "technician"
+      line_group: "A" | "B" | "C" | "D" | "BR" | "STAB"
+      session_status: "draft" | "complete" | "published"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +415,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "technician"],
+      line_group: ["A", "B", "C", "D", "BR", "STAB"],
+      session_status: ["draft", "complete", "published"],
+    },
   },
 } as const
