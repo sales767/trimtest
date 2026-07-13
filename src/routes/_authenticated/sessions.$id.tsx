@@ -1,0 +1,321 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
+import { getSession, upsertMeasurement, updateSession, deleteSession } from "@/lib/sessions.functions";
+import { PageHeader } from "./route";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, CheckCircle2, Trash2, Share2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
+
+const sessionQuery = (id: string) =>
+  queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
+
+export const Route = createFileRoute("/_authenticated/sessions/$id")({
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(sessionQuery(params.id)),
+  component: SessionDetail,
+  errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,
+  notFoundComponent: () => <div className="p-8">Session not found</div>,
+});
+
+const GROUPS = ["A", "B", "C", "D", "BR", "STAB"] as const;
+
+type LineSpec = {
+  id: string;
+  line_group: string;
+  label: string;
+  factory_length_mm: number | string;
+  tolerance_mm: number | string;
+};
+type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
+
+function classify(dev: number, tol: number): "ok" | "warn" | "bad" {
+  const a = Math.abs(dev);
+  if (a <= tol) return "ok";
+  if (a <= tol * 2) return "warn";
+  return "bad";
+}
+
+const CLASS_STYLE: Record<string, string> = {
+  ok: "border-emerald-500/40 bg-emerald-500/5",
+  warn: "border-amber-500/50 bg-amber-500/5",
+  bad: "border-red-500/50 bg-red-500/5",
+  empty: "border-border bg-card",
+};
+const DOT_STYLE: Record<string, string> = {
+  ok: "bg-emerald-500",
+  warn: "bg-amber-500",
+  bad: "bg-red-500",
+  empty: "bg-muted-foreground/30",
+};
+
+function SessionDetail() {
+  const { id } = Route.useParams();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { data } = useSuspenseQuery(sessionQuery(id));
+  const { session, lines, measurements } = data;
+  const wing = session.wing as {
+    serial_number: string;
+    owner_note: string | null;
+    model: { id: string; brand: string; name: string; size: string | null; cells: number | null };
+  };
+
+  // Local edit state, keyed by line_spec_id
+  const initial = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of measurements as Measurement[]) {
+      map[m.line_spec_id] = String(m.measured_mm ?? "");
+    }
+    return map;
+  }, [measurements]);
+  const [values, setValues] = useState<Record<string, string>>(initial);
+  useEffect(() => setValues(initial), [initial]);
+
+  const saveMut = useMutation({
+    mutationFn: (v: { line_spec_id: string; measured_mm: number }) =>
+      upsertMeasurement({ data: { session_id: id, ...v } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["session", id] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  function onChange(line_spec_id: string, raw: string) {
+    setValues((v) => ({ ...v, [line_spec_id]: raw }));
+    const n = Number(raw);
+    if (!raw || !Number.isFinite(n) || n <= 0) return;
+    if (timers.current[line_spec_id]) clearTimeout(timers.current[line_spec_id]);
+    timers.current[line_spec_id] = setTimeout(() => {
+      saveMut.mutate({ line_spec_id, measured_mm: n });
+    }, 400);
+  }
+
+  const readOnly = session.status !== "draft";
+
+  const statusMut = useMutation({
+    mutationFn: (status: "draft" | "complete" | "published") =>
+      updateSession({ data: { id, status } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session", id] });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const [notes, setNotes] = useState(session.notes ?? "");
+  const notesMut = useMutation({
+    mutationFn: () => updateSession({ data: { id, notes } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session", id] });
+      toast.success("Notes saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const delMut = useMutation({
+    mutationFn: () => deleteSession({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      navigate({ to: "/sessions" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Merge specs + current values into rows with computed deviation
+  const rows = (lines as LineSpec[]).map((l) => {
+    const raw = values[l.id];
+    const n = Number(raw);
+    const hasVal = raw && Number.isFinite(n) && n > 0;
+    const factory = Number(l.factory_length_mm);
+    const tol = Number(l.tolerance_mm) || 10;
+    const dev = hasVal ? n - factory : null;
+    const cls = dev === null ? "empty" : classify(dev, tol);
+    return { line: l, value: raw ?? "", dev, factory, tol, cls };
+  });
+
+  const grouped = GROUPS.map((g) => ({ group: g, items: rows.filter((r) => r.line.line_group === g) }))
+    .filter((g) => g.items.length > 0);
+
+  // Summary per group + overall
+  const measured = rows.filter((r) => r.dev !== null);
+  const summary = GROUPS.map((g) => {
+    const items = measured.filter((r) => r.line.line_group === g);
+    if (items.length === 0) return null;
+    const avg = items.reduce((s, r) => s + (r.dev ?? 0), 0) / items.length;
+    const worst = items.reduce((m, r) => Math.max(m, Math.abs(r.dev ?? 0)), 0);
+    return { group: g, count: items.length, avg, worst };
+  }).filter(Boolean) as { group: string; count: number; avg: number; worst: number }[];
+
+  const totalLines = rows.length;
+  const measuredCount = measured.length;
+  const outOfTol = measured.filter((r) => r.cls !== "ok").length;
+
+  return (
+    <div>
+      <PageHeader
+        title={`${wing.model.brand} ${wing.model.name}${wing.model.size ? ` · ${wing.model.size}` : ""}`}
+        description={
+          `SN ${wing.serial_number} · ${session.session_date} · ${session.status}` +
+          ` · ${measuredCount}/${totalLines} lines measured`
+        }
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/sessions"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
+            </Button>
+            {session.status === "draft" && (
+              <Button size="sm" onClick={() => statusMut.mutate("complete")} disabled={statusMut.isPending || measuredCount === 0}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />Mark complete
+              </Button>
+            )}
+            {session.status === "complete" && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => statusMut.mutate("draft")}>
+                  Back to draft
+                </Button>
+                <Button size="sm" onClick={() => statusMut.mutate("published")}>
+                  <Share2 className="h-4 w-4 mr-2" />Publish
+                </Button>
+              </>
+            )}
+            {session.status === "published" && (
+              <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
+                Unpublish
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this session?")) delMut.mutate(); }}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="p-8 space-y-6">
+        {/* Summary */}
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <SummaryCard label="Measured" value={`${measuredCount} / ${totalLines}`} />
+          <SummaryCard label="Out of tolerance" value={String(outOfTol)} tone={outOfTol === 0 ? "ok" : outOfTol > 2 ? "bad" : "warn"} />
+          <SummaryCard label="Worst deviation" value={measured.length ? `${Math.max(...measured.map((r) => Math.abs(r.dev ?? 0))).toFixed(1)} mm` : "—"} />
+          <SummaryCard label="Avg deviation" value={measured.length ? `${(measured.reduce((s, r) => s + (r.dev ?? 0), 0) / measured.length).toFixed(1)} mm` : "—"} />
+        </div>
+
+        {summary.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold mb-3">Deviation per group</h3>
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-6">
+              {summary.map((g) => (
+                <div key={g.group} className="text-sm">
+                  <div className="text-xs uppercase tracking-widest text-muted-foreground">Group {g.group}</div>
+                  <div className="mt-1 font-mono">
+                    avg <span className="font-semibold">{g.avg >= 0 ? "+" : ""}{g.avg.toFixed(1)}</span> mm
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono">worst {g.worst.toFixed(1)} mm · {g.count} lines</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Measurement grid */}
+        {grouped.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-12 text-center">
+            <p className="text-muted-foreground">This model has no linemap yet.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Add lines to <Link to="/models/$id" params={{ id: wing.model.id }} className="underline">the model</Link> first.
+            </p>
+          </div>
+        ) : (
+          grouped.map((g) => (
+            <section key={g.group}>
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                Group {g.group}
+              </h2>
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {g.items.map((r) => (
+                  <div
+                    key={r.line.id}
+                    className={`rounded-md border p-3 transition-colors ${CLASS_STYLE[r.cls]}`}
+                    style={{ boxShadow: "var(--shadow-panel)" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-semibold text-primary">{r.line.label}</span>
+                      <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                      factory {r.factory.toFixed(0)} ± {r.tol.toFixed(1)}
+                    </div>
+                    <Input
+                      inputMode="decimal"
+                      type="number"
+                      step="0.1"
+                      readOnly={readOnly}
+                      value={r.value}
+                      onChange={(e) => onChange(r.line.id, e.target.value)}
+                      placeholder="mm"
+                      className="mt-2 font-mono text-lg tabular-nums h-9"
+                    />
+                    <div className="mt-1 font-mono text-xs tabular-nums h-4">
+                      {r.dev === null ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <span
+                          className={
+                            r.cls === "ok"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : r.cls === "warn"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-red-600 dark:text-red-400"
+                          }
+                        >
+                          {r.dev >= 0 ? "+" : ""}{r.dev.toFixed(1)} mm
+                          <span className="text-muted-foreground ml-1">
+                            ({((r.dev / r.factory) * 100).toFixed(2)}%)
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+
+        {/* Notes */}
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="text-sm font-semibold mb-2">Notes</h3>
+          <Textarea
+            rows={3}
+            value={notes}
+            readOnly={readOnly}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Observations, hangar conditions, ballast, technician remarks…"
+          />
+          {!readOnly && (
+            <div className="mt-2 flex justify-end">
+              <Button size="sm" variant="outline" onClick={() => notesMut.mutate()} disabled={notesMut.isPending}>
+                Save notes
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "bad" }) {
+  const toneCls =
+    tone === "ok" ? "text-emerald-600 dark:text-emerald-400"
+    : tone === "warn" ? "text-amber-600 dark:text-amber-400"
+    : tone === "bad" ? "text-red-600 dark:text-red-400"
+    : "";
+  return (
+    <div className="rounded-lg border border-border bg-card p-4" style={{ boxShadow: "var(--shadow-panel)" }}>
+      <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className={`mt-2 text-2xl font-semibold tabular-nums ${toneCls}`}>{value}</div>
+    </div>
+  );
+}
