@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { getModel, upsertLine, deleteLine, bulkImportLines } from "@/lib/models.functions";
+import { listLoopCatalog } from "@/lib/materials.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,14 @@ import { toast } from "sonner";
 
 const modelQuery = (id: string) =>
   queryOptions({ queryKey: ["model", id], queryFn: () => getModel({ data: { id } }) });
+const catalogQuery = queryOptions({ queryKey: ["loop-catalog"], queryFn: () => listLoopCatalog() });
 
 export const Route = createFileRoute("/_authenticated/models/$id")({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(modelQuery(params.id)),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(modelQuery(params.id)),
+      context.queryClient.ensureQueryData(catalogQuery),
+    ]),
   component: ModelDetail,
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-8">Model not found</div>,
@@ -29,16 +35,18 @@ function ModelDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(modelQuery(id));
+  const { data: catalog } = useSuspenseQuery(catalogQuery);
   const { model, lines } = data;
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [line, setLine] = useState<{ line_group: Group; label: string; factory_length_mm: string; tolerance_mm: string; row_index: string }>({
+  const [line, setLine] = useState<{ line_group: Group; label: string; factory_length_mm: string; tolerance_mm: string; row_index: string; material_id: string }>({
     line_group: "A",
     label: "",
     factory_length_mm: "",
     tolerance_mm: "10",
     row_index: "1",
+    material_id: "",
   });
   const [csv, setCsv] = useState("");
   const [replace, setReplace] = useState(false);
@@ -54,6 +62,7 @@ function ModelDetail() {
           tolerance_mm: Number(line.tolerance_mm) || 10,
           row_index: Number(line.row_index) || 1,
           sort_order: lines.length,
+          material_id: line.material_id || null,
         },
       }),
     onSuccess: () => {
