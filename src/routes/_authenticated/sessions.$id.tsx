@@ -28,8 +28,12 @@ type LineSpec = {
   label: string;
   factory_length_mm: number | string;
   tolerance_mm: number | string;
+  material_id: string | null;
 };
 type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
+type Material = { id: string; name: string; diameter_mm: number | string | null };
+type LoopType = { id: string; name: string; description: string | null; sort_order: number };
+type Shortening = { material_id: string; loop_type_id: string; shortening_mm: number | string };
 
 function classify(dev: number, tol: number): "ok" | "warn" | "bad" {
   const a = Math.abs(dev);
@@ -57,6 +61,20 @@ function SessionDetail() {
   const navigate = useNavigate();
   const { data } = useSuspenseQuery(sessionQuery(id));
   const { session, lines, measurements } = data;
+  const materials = (data as { materials?: Material[] }).materials ?? [];
+  const loopTypes = (data as { loopTypes?: LoopType[] }).loopTypes ?? [];
+  const shortenings = (data as { shortenings?: Shortening[] }).shortenings ?? [];
+  const materialById = new Map(materials.map((m) => [m.id, m]));
+  const loopById = new Map(loopTypes.map((l) => [l.id, l]));
+  // material_id -> [{ loop, shortening }]
+  const loopsByMaterial = new Map<string, { loop: LoopType; shortening: number }[]>();
+  for (const s of shortenings) {
+    const loop = loopById.get(s.loop_type_id);
+    if (!loop) continue;
+    const arr = loopsByMaterial.get(s.material_id) ?? [];
+    arr.push({ loop, shortening: Number(s.shortening_mm) });
+    loopsByMaterial.set(s.material_id, arr);
+  }
   const wing = session.wing as {
     id: string;
     serial_number: string;
@@ -133,7 +151,23 @@ function SessionDetail() {
     const tol = Number(l.tolerance_mm) || 10;
     const dev = hasVal ? n - factory : null;
     const cls = dev === null ? "empty" : classify(dev, tol);
-    return { line: l, value: raw ?? "", dev, factory, tol, cls };
+    // Loop recommendation: line too long (dev>0) → apply loop that shortens ≈ dev.
+    // We list all loop options for this material, sorted by how close their
+    // shortening matches the deviation.
+    let suggestion: { loop: LoopType; shortening: number; residual: number } | null = null;
+    let alternates: { loop: LoopType; shortening: number; residual: number }[] = [];
+    if (dev !== null && l.material_id) {
+      const options = loopsByMaterial.get(l.material_id) ?? [];
+      if (options.length > 0) {
+        const ranked = options
+          .map((o) => ({ ...o, residual: dev - o.shortening })) // remaining error after applying loop
+          .sort((a, b) => Math.abs(a.residual) - Math.abs(b.residual));
+        suggestion = ranked[0];
+        alternates = ranked.slice(1, 3);
+      }
+    }
+    const material = l.material_id ? materialById.get(l.material_id) ?? null : null;
+    return { line: l, value: raw ?? "", dev, factory, tol, cls, suggestion, alternates, material };
   });
 
   const grouped = GROUPS.map((g) => ({ group: g, items: rows.filter((r) => r.line.line_group === g) }))
@@ -308,6 +342,38 @@ function SessionDetail() {
                             ({((r.dev / r.factory) * 100).toFixed(2)}%)
                           </span>
                         </span>
+                      )}
+                    </div>
+                    <div className="mt-2 border-t border-border/60 pt-2 min-h-[46px]">
+                      {r.dev === null || r.cls === "ok" ? (
+                        <div className="text-[10px] text-muted-foreground">
+                          {r.material ? r.material.name : "no material"}
+                          {r.cls === "ok" && r.dev !== null ? " · within tolerance" : ""}
+                        </div>
+                      ) : !r.line.material_id ? (
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                          Set line material to get loop suggestion
+                        </div>
+                      ) : !r.suggestion ? (
+                        <div className="text-[10px] text-muted-foreground">
+                          No loops mapped for {r.material?.name ?? "material"}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Suggested loop</div>
+                          <div className="font-mono text-sm font-semibold">
+                            {r.suggestion.loop.name}
+                            <span className="text-muted-foreground font-normal ml-1">
+                              (−{r.suggestion.shortening.toFixed(1)} mm)
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            residual {r.suggestion.residual >= 0 ? "+" : ""}{r.suggestion.residual.toFixed(1)} mm
+                            {r.alternates.length > 0 && (
+                              <> · alt: {r.alternates.map((a) => a.loop.name).join(", ")}</>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
