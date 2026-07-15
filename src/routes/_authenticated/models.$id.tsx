@@ -232,6 +232,33 @@ function ModelDetail() {
                     <div className="text-[10px] text-muted-foreground mt-1">
                       ± {Number(l.tolerance_mm).toFixed(1)} mm
                     </div>
+                    <select
+                      className="mt-2 w-full rounded border border-input bg-background text-xs h-7 px-1"
+                      value={(l as { material_id: string | null }).material_id ?? ""}
+                      onChange={(e) => {
+                        upsertLine({
+                          data: {
+                            id: l.id,
+                            model_id: id,
+                            line_group: l.line_group as Group,
+                            label: l.label,
+                            factory_length_mm: Number(l.factory_length_mm),
+                            tolerance_mm: Number(l.tolerance_mm) || 10,
+                            row_index: l.row_index || 1,
+                            sort_order: l.sort_order || 0,
+                            material_id: e.target.value || null,
+                          },
+                        }).then(
+                          () => qc.invalidateQueries({ queryKey: ["model", id] }),
+                          (err: Error) => toast.error(err.message),
+                        );
+                      }}
+                    >
+                      <option value="">— material —</option>
+                      {catalog.materials.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>
