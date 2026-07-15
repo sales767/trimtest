@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { getModel, upsertLine, deleteLine, bulkImportLines } from "@/lib/models.functions";
+import { listLoopCatalog } from "@/lib/materials.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,14 @@ import { toast } from "sonner";
 
 const modelQuery = (id: string) =>
   queryOptions({ queryKey: ["model", id], queryFn: () => getModel({ data: { id } }) });
+const catalogQuery = queryOptions({ queryKey: ["loop-catalog"], queryFn: () => listLoopCatalog() });
 
 export const Route = createFileRoute("/_authenticated/models/$id")({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(modelQuery(params.id)),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(modelQuery(params.id)),
+      context.queryClient.ensureQueryData(catalogQuery),
+    ]),
   component: ModelDetail,
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-8">Model not found</div>,
@@ -29,16 +35,18 @@ function ModelDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(modelQuery(id));
+  const { data: catalog } = useSuspenseQuery(catalogQuery);
   const { model, lines } = data;
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [line, setLine] = useState<{ line_group: Group; label: string; factory_length_mm: string; tolerance_mm: string; row_index: string }>({
+  const [line, setLine] = useState<{ line_group: Group; label: string; factory_length_mm: string; tolerance_mm: string; row_index: string; material_id: string }>({
     line_group: "A",
     label: "",
     factory_length_mm: "",
     tolerance_mm: "10",
     row_index: "1",
+    material_id: "",
   });
   const [csv, setCsv] = useState("");
   const [replace, setReplace] = useState(false);
@@ -54,6 +62,7 @@ function ModelDetail() {
           tolerance_mm: Number(line.tolerance_mm) || 10,
           row_index: Number(line.row_index) || 1,
           sort_order: lines.length,
+          material_id: line.material_id || null,
         },
       }),
     onSuccess: () => {
@@ -163,6 +172,24 @@ function ModelDetail() {
                       <Label>Row</Label>
                       <Input type="number" value={line.row_index} onChange={(e) => setLine({ ...line, row_index: e.target.value })} />
                     </div>
+                    <div className="col-span-2">
+                      <Label>Material (optional)</Label>
+                      <Select
+                        value={line.material_id || "__none"}
+                        onValueChange={(v) => setLine({ ...line, material_id: v === "__none" ? "" : v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="No material" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">No material</SelectItem>
+                          {catalog.materials.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Needed so the loop-recommendation engine can suggest which loop fits each measured deviation.
+                      </p>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="submit" disabled={addLine.isPending}>{addLine.isPending ? "Saving…" : "Save"}</Button>
@@ -205,6 +232,33 @@ function ModelDetail() {
                     <div className="text-[10px] text-muted-foreground mt-1">
                       ± {Number(l.tolerance_mm).toFixed(1)} mm
                     </div>
+                    <select
+                      className="mt-2 w-full rounded border border-input bg-background text-xs h-7 px-1"
+                      value={(l as { material_id: string | null }).material_id ?? ""}
+                      onChange={(e) => {
+                        upsertLine({
+                          data: {
+                            id: l.id,
+                            model_id: id,
+                            line_group: l.line_group as Group,
+                            label: l.label,
+                            factory_length_mm: Number(l.factory_length_mm),
+                            tolerance_mm: Number(l.tolerance_mm) || 10,
+                            row_index: l.row_index || 1,
+                            sort_order: l.sort_order || 0,
+                            material_id: e.target.value || null,
+                          },
+                        }).then(
+                          () => qc.invalidateQueries({ queryKey: ["model", id] }),
+                          (err: Error) => toast.error(err.message),
+                        );
+                      }}
+                    >
+                      <option value="">— material —</option>
+                      {catalog.materials.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>

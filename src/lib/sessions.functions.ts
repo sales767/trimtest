@@ -119,13 +119,26 @@ export const getSession = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!session) throw new Error("Session not found");
     const modelId = (session.wing as { model: { id: string } }).model.id;
-    const [linesRes, measRes] = await Promise.all([
+    const [linesRes, measRes, matsRes, loopsRes, shortRes] = await Promise.all([
       context.supabase.from("line_specs").select("*").eq("model_id", modelId).order("line_group").order("sort_order").order("label"),
       context.supabase.from("measurements").select("*").eq("session_id", data.id),
+      context.supabase.from("line_materials").select("id, name, diameter_mm").order("name"),
+      context.supabase.from("loop_types").select("id, name, description, sort_order").order("sort_order").order("name"),
+      context.supabase.from("loop_shortenings").select("material_id, loop_type_id, shortening_mm"),
     ]);
     if (linesRes.error) throw new Error(linesRes.error.message);
     if (measRes.error) throw new Error(measRes.error.message);
-    return { session, lines: linesRes.data ?? [], measurements: measRes.data ?? [] };
+    if (matsRes.error) throw new Error(matsRes.error.message);
+    if (loopsRes.error) throw new Error(loopsRes.error.message);
+    if (shortRes.error) throw new Error(shortRes.error.message);
+    return {
+      session,
+      lines: linesRes.data ?? [],
+      measurements: measRes.data ?? [],
+      materials: matsRes.data ?? [],
+      loopTypes: loopsRes.data ?? [],
+      shortenings: shortRes.data ?? [],
+    };
   });
 
 export const upsertMeasurement = createServerFn({ method: "POST" })

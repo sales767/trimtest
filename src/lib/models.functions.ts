@@ -89,6 +89,7 @@ const lineInput = z.object({
   factory_length_mm: z.number().positive().max(20000),
   tolerance_mm: z.number().min(0).max(500).default(10),
   sort_order: z.number().int().min(0).max(1000).default(0),
+  material_id: z.string().uuid().nullable().optional(),
 });
 
 export const upsertLine = createServerFn({ method: "POST" })
