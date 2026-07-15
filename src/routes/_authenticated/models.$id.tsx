@@ -163,6 +163,24 @@ function ModelDetail() {
                       <Label>Row</Label>
                       <Input type="number" value={line.row_index} onChange={(e) => setLine({ ...line, row_index: e.target.value })} />
                     </div>
+                    <div className="col-span-2">
+                      <Label>Material (optional)</Label>
+                      <Select
+                        value={line.material_id || "__none"}
+                        onValueChange={(v) => setLine({ ...line, material_id: v === "__none" ? "" : v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="No material" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">No material</SelectItem>
+                          {catalog.materials.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Needed so the loop-recommendation engine can suggest which loop fits each measured deviation.
+                      </p>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="submit" disabled={addLine.isPending}>{addLine.isPending ? "Saving…" : "Save"}</Button>
