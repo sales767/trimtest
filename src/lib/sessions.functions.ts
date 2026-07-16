@@ -78,6 +78,13 @@ export const startMeasurement = createServerFn({ method: "POST" })
       model_id: z.string().uuid(),
       serial_number: z.string().min(1).max(80).transform((s) => s.trim()),
       notes: z.string().max(2000).optional(),
+      measurement_order: z.enum(["rows", "columns", "sections"]).optional(),
+      includes_brakes: z.boolean().optional(),
+      tolerance_override_mm: z.number().min(0).max(500).nullable().optional(),
+      offset_mm: z.number().min(-500).max(500).nullable().optional(),
+      comment: z.string().max(2000).optional(),
+      publish_anonymously: z.boolean().optional(),
+      previous_session_id: z.string().uuid().nullable().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -101,7 +108,18 @@ export const startMeasurement = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await context.supabase
       .from("measurement_sessions")
-      .insert({ wing_id: wingId, technician_id: context.userId, notes: data.notes ?? null })
+      .insert({
+        wing_id: wingId,
+        technician_id: context.userId,
+        notes: data.notes ?? null,
+        measurement_order: data.measurement_order,
+        includes_brakes: data.includes_brakes,
+        tolerance_override_mm: data.tolerance_override_mm ?? null,
+        offset_mm: data.offset_mm ?? null,
+        comment: data.comment ?? null,
+        publish_anonymously: data.publish_anonymously,
+        previous_session_id: data.previous_session_id ?? null,
+      })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
