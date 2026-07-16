@@ -28,6 +28,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedWingsIdRouteImport } from './routes/_authenticated/wings.$id'
 import { Route as AuthenticatedSessionsIdRouteImport } from './routes/_authenticated/sessions.$id'
 import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
+import { Route as AuthenticatedWingsIdHistoryRouteImport } from './routes/_authenticated/wings.$id.history'
 
 const VisionRoute = VisionRouteImport.update({
   id: '/vision',
@@ -123,6 +124,12 @@ const AuthenticatedModelsIdRoute = AuthenticatedModelsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedModelsRoute,
 } as any)
+const AuthenticatedWingsIdHistoryRoute =
+  AuthenticatedWingsIdHistoryRouteImport.update({
+    id: '/history',
+    path: '/history',
+    getParentRoute: () => AuthenticatedWingsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,7 +149,8 @@ export interface FileRoutesByFullPath {
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/wings/$id': typeof AuthenticatedWingsIdRoute
+  '/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -162,7 +170,8 @@ export interface FileRoutesByTo {
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/wings/$id': typeof AuthenticatedWingsIdRoute
+  '/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -184,7 +193,8 @@ export interface FileRoutesById {
   '/share/$token': typeof ShareTokenRoute
   '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
   '/_authenticated/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/_authenticated/wings/$id': typeof AuthenticatedWingsIdRoute
+  '/_authenticated/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/_authenticated/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/models/$id'
     | '/sessions/$id'
     | '/wings/$id'
+    | '/wings/$id/history'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/models/$id'
     | '/sessions/$id'
     | '/wings/$id'
+    | '/wings/$id/history'
   id:
     | '__root__'
     | '/'
@@ -248,6 +260,7 @@ export interface FileRouteTypes {
     | '/_authenticated/models/$id'
     | '/_authenticated/sessions/$id'
     | '/_authenticated/wings/$id'
+    | '/_authenticated/wings/$id/history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModelsIdRouteImport
       parentRoute: typeof AuthenticatedModelsRoute
     }
+    '/_authenticated/wings/$id/history': {
+      id: '/_authenticated/wings/$id/history'
+      path: '/history'
+      fullPath: '/wings/$id/history'
+      preLoaderRoute: typeof AuthenticatedWingsIdHistoryRouteImport
+      parentRoute: typeof AuthenticatedWingsIdRoute
+    }
   }
 }
 
@@ -423,12 +443,23 @@ const AuthenticatedSessionsRouteWithChildren =
     AuthenticatedSessionsRouteChildren,
   )
 
+interface AuthenticatedWingsIdRouteChildren {
+  AuthenticatedWingsIdHistoryRoute: typeof AuthenticatedWingsIdHistoryRoute
+}
+
+const AuthenticatedWingsIdRouteChildren: AuthenticatedWingsIdRouteChildren = {
+  AuthenticatedWingsIdHistoryRoute: AuthenticatedWingsIdHistoryRoute,
+}
+
+const AuthenticatedWingsIdRouteWithChildren =
+  AuthenticatedWingsIdRoute._addFileChildren(AuthenticatedWingsIdRouteChildren)
+
 interface AuthenticatedWingsRouteChildren {
-  AuthenticatedWingsIdRoute: typeof AuthenticatedWingsIdRoute
+  AuthenticatedWingsIdRoute: typeof AuthenticatedWingsIdRouteWithChildren
 }
 
 const AuthenticatedWingsRouteChildren: AuthenticatedWingsRouteChildren = {
-  AuthenticatedWingsIdRoute: AuthenticatedWingsIdRoute,
+  AuthenticatedWingsIdRoute: AuthenticatedWingsIdRouteWithChildren,
 }
 
 const AuthenticatedWingsRouteWithChildren =

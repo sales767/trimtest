@@ -71,6 +71,23 @@ const finishInput = z.object({
       }),
     )
     .default([]),
+  cascades: z
+    .array(
+      z.object({
+        line_group: z.enum(["A", "B", "C", "D", "BR", "STAB"]),
+        description: z.string().min(1).max(2000),
+      }),
+    )
+    .default([]),
+  inserts: z
+    .array(
+      z.object({
+        line_spec_id: z.string().uuid().nullable().optional(),
+        description: z.string().min(1).max(2000),
+        length_change_mm: z.number().min(-500).max(500),
+      }),
+    )
+    .default([]),
   sync_wing_loop_state: z.boolean().default(false),
   publish: z.boolean().default(false),
 });
@@ -122,6 +139,39 @@ export const finishSession = createServerFn({ method: "POST" })
           .from("wing_loop_state")
           .upsert(state, { onConflict: "wing_id,line_spec_id" });
         if (error) throw new Error(error.message);
+      }
+    }
+
+    // 2b) Cascade descriptions + insert records (replace all for the session)
+    {
+      const { error: dc } = await context.supabase
+        .from("cascade_loop_changes")
+        .delete()
+        .eq("session_id", data.session_id);
+      if (dc) throw new Error(dc.message);
+      if (data.cascades.length > 0) {
+        const rows = data.cascades.map((c) => ({
+          session_id: data.session_id,
+          line_group: c.line_group,
+          description: c.description,
+        }));
+        const { error: ic } = await context.supabase.from("cascade_loop_changes").insert(rows);
+        if (ic) throw new Error(ic.message);
+      }
+      const { error: di } = await context.supabase
+        .from("line_inserts")
+        .delete()
+        .eq("session_id", data.session_id);
+      if (di) throw new Error(di.message);
+      if (data.inserts.length > 0) {
+        const rows = data.inserts.map((r) => ({
+          session_id: data.session_id,
+          line_spec_id: r.line_spec_id ?? null,
+          description: r.description,
+          length_change_mm: r.length_change_mm,
+        }));
+        const { error: ii } = await context.supabase.from("line_inserts").insert(rows);
+        if (ii) throw new Error(ii.message);
       }
     }
 
@@ -179,4 +229,79 @@ export const updateSessionSetup = createServerFn({ method: "POST" })
       .eq("id", id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// Read cascades, inserts and loop-change records for a session.
+export const getSessionExtras = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ session_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const [c, i, lc] = await Promise.all([
+      context.supabase.from("cascade_loop_changes").select("*").eq("session_id", data.session_id),
+      context.supabase.from("line_inserts").select("*").eq("session_id", data.session_id),
+      context.supabase.from("session_loop_changes").select("*").eq("session_id", data.session_id),
+    ]);
+    if (c.error) throw new Error(c.error.message);
+    if (i.error) throw new Error(i.error.message);
+    if (lc.error) throw new Error(lc.error.message);
+    return { cascades: c.data ?? [], inserts: i.data ?? [], loopChanges: lc.data ?? [] };
+  });
+
+// Create a re-measure session as a child of an existing session. Optionally
+// copies measured values for lines NOT selected for re-measurement.
+const remeasureInput = z.object({
+  previous_session_id: z.string().uuid(),
+  remeasure_line_ids: z.array(z.string().uuid()).default([]),
+  carry_over: z.boolean().default(true),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+export const createRemeasureSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => remeasureInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: prev, error: pe } = await context.supabase
+      .from("measurement_sessions")
+      .select(
+        "wing_id, notes, measurement_order, includes_brakes, tolerance_override_mm, offset_mm, publish_anonymously",
+      )
+      .eq("id", data.previous_session_id)
+      .maybeSingle();
+    if (pe) throw new Error(pe.message);
+    if (!prev) throw new Error("Previous session not found");
+    const { data: created, error: ce } = await context.supabase
+      .from("measurement_sessions")
+      .insert({
+        wing_id: prev.wing_id,
+        technician_id: context.userId,
+        notes: data.notes ?? prev.notes ?? null,
+        measurement_order: prev.measurement_order,
+        includes_brakes: prev.includes_brakes,
+        tolerance_override_mm: prev.tolerance_override_mm,
+        offset_mm: prev.offset_mm,
+        publish_anonymously: prev.publish_anonymously,
+        previous_session_id: data.previous_session_id,
+      })
+      .select("id")
+      .single();
+    if (ce) throw new Error(ce.message);
+    if (data.carry_over) {
+      const remeasure = new Set(data.remeasure_line_ids);
+      const { data: prevMeasurements, error: me } = await context.supabase
+        .from("measurements")
+        .select("line_spec_id, measured_mm")
+        .eq("session_id", data.previous_session_id);
+      if (me) throw new Error(me.message);
+      const toCopy = (prevMeasurements ?? []).filter((m) => !remeasure.has(m.line_spec_id));
+      if (toCopy.length > 0) {
+        const rows = toCopy.map((m) => ({
+          session_id: created.id,
+          line_spec_id: m.line_spec_id,
+          measured_mm: m.measured_mm,
+        }));
+        const { error: ie } = await context.supabase.from("measurements").insert(rows);
+        if (ie) throw new Error(ie.message);
+      }
+    }
+    return { session_id: created.id };
   });

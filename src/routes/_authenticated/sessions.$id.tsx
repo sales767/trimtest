@@ -1,18 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { getSession, upsertMeasurement, updateSession, deleteSession } from "@/lib/sessions.functions";
-import { importMeasurementsXlsx } from "@/lib/session-extras.functions";
+import { importMeasurementsXlsx, createRemeasureSession } from "@/lib/session-extras.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair, History, Repeat2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { AoIDiagram, EstimatesDisclaimer } from "@/components/aoi-diagram";
 import { exportProtocolPdf, exportProtocolXlsx } from "@/lib/session-export";
 import { isLaserSupported, isLaserConnected, connectLaser, disconnectLaser, readNextDistanceMm } from "@/lib/leica-disto";
+import { FinishSessionDialog } from "@/components/finish-session-dialog";
+import { ReviewFlagsDialog } from "@/components/review-flags-dialog";
+import { LoopSimulator } from "@/components/loop-simulator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const sessionQuery = (id: string) =>
   queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
@@ -33,12 +38,15 @@ type LineSpec = {
   factory_length_mm: number | string;
   tolerance_mm: number | string;
   material_id: string | null;
+  row_index?: number | null;
+  point_index?: number | null;
 };
 type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
 type MeasurementFull = Measurement & { flagged?: boolean | null; flag_reason?: string | null };
 type Material = { id: string; name: string; diameter_mm: number | string | null };
 type LoopType = { id: string; name: string; description: string | null; sort_order: number };
 type Shortening = { material_id: string; loop_type_id: string; shortening_mm: number | string };
+type WingLoop = { line_spec_id: string; loop_type_id: string | null };
 
 function classify(dev: number, tol: number): "ok" | "warn" | "bad" {
   const a = Math.abs(dev);
@@ -89,6 +97,7 @@ function SessionDetail() {
     owner_note: string | null;
     model: { id: string; brand: string; name: string; size: string | null; cells: number | null };
   };
+  const wingLoopState = (data as { wingLoopState?: WingLoop[] }).wingLoopState ?? [];
 
   // Local edit state, keyed by line_spec_id
   const initial = useMemo(() => {
@@ -136,6 +145,29 @@ function SessionDetail() {
   const [importing, setImporting] = useState(false);
   const [laserOn, setLaserOn] = useState(false);
   const [laserBusy, setLaserBusy] = useState<string | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [publishOnFinish, setPublishOnFinish] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [remeasureOpen, setRemeasureOpen] = useState(false);
+  const [remeasureSelected, setRemeasureSelected] = useState<Record<string, boolean>>({});
+
+  const remeasureMut = useMutation({
+    mutationFn: () =>
+      createRemeasureSession({
+        data: {
+          previous_session_id: id,
+          remeasure_line_ids: Object.keys(remeasureSelected).filter((k) => remeasureSelected[k]),
+          carry_over: true,
+        },
+      }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      setRemeasureOpen(false);
+      setRemeasureSelected({});
+      navigate({ to: "/sessions/$id", params: { id: res.session_id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   async function toggleLaser() {
     if (laserOn || isLaserConnected()) {
@@ -295,7 +327,40 @@ function SessionDetail() {
     tol: r.tol,
     measured: r.value ? Number(r.value) : null,
     dev: r.dev,
+    row_index: r.line.row_index ?? null,
+    point_index: r.line.point_index ?? null,
   }));
+  // Rows for the loop simulator (needs material_id + numeric dev)
+  const simulatorRows = rows.map((r) => ({
+    line_spec_id: r.line.id,
+    label: r.line.label,
+    line_group: r.line.line_group,
+    factory: r.factory,
+    tol: r.tol,
+    measured: r.value ? Number(r.value) : null,
+    dev: r.dev,
+    material_id: r.line.material_id,
+  }));
+  // Collect flagged readings for the review gate
+  const flaggedRows = rows
+    .filter((r) => flaggedByLine.get(r.line.id)?.flagged)
+    .map((r) => ({
+      line_spec_id: r.line.id,
+      label: r.line.label,
+      line_group: r.line.line_group,
+      measured: r.value ? Number(r.value) : null,
+      dev: r.dev,
+      reason: flaggedByLine.get(r.line.id)?.reason ?? "Implausible reading",
+    }));
+
+  function requestFinish(publish: boolean) {
+    setPublishOnFinish(publish);
+    if (flaggedRows.length > 0) {
+      setReviewOpen(true);
+      return;
+    }
+    setFinishOpen(true);
+  }
   const wingLabel = `${wing.model.brand} ${wing.model.name}${wing.model.size ? ` · ${wing.model.size}` : ""}`;
 
   return (
@@ -345,8 +410,8 @@ function SessionDetail() {
               </>
             )}
             {session.status === "draft" && (
-              <Button size="sm" onClick={() => statusMut.mutate("complete")} disabled={statusMut.isPending || measuredCount === 0}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />Mark complete
+              <Button size="sm" onClick={() => requestFinish(false)} disabled={measuredCount === 0}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />Finish session
               </Button>
             )}
             {session.status === "complete" && (
@@ -354,8 +419,11 @@ function SessionDetail() {
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("draft")}>
                   Back to draft
                 </Button>
-                <Button size="sm" onClick={() => statusMut.mutate("published")}>
+                <Button size="sm" onClick={() => requestFinish(true)}>
                   <Share2 className="h-4 w-4 mr-2" />Publish
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setRemeasureSelected({}); setRemeasureOpen(true); }}>
+                  <Repeat2 className="h-4 w-4 mr-2" /> Re-measure
                 </Button>
               </>
             )}
@@ -373,11 +441,19 @@ function SessionDetail() {
                     </Button>
                   </>
                 )}
+                <Button variant="outline" size="sm" onClick={() => { setRemeasureSelected({}); setRemeasureOpen(true); }}>
+                  <Repeat2 className="h-4 w-4 mr-2" /> Re-measure
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
                   Unpublish
                 </Button>
               </>
             )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/wings/$id/history" params={{ id: wing.id }}>
+                <History className="h-4 w-4 mr-2" /> Wing history
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -446,6 +522,8 @@ function SessionDetail() {
 
         <AoIDiagram rows={exportRows} />
 
+        <LoopSimulator rows={simulatorRows} loopTypes={loopTypes} shortenings={shortenings} />
+
         {/* Measurement grid */}
         {grouped.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
@@ -464,6 +542,7 @@ function SessionDetail() {
                 {g.items.map((r) => (
                   <div
                     key={r.line.id}
+                    id={`line-${r.line.id}`}
                     className={`rounded-md border p-3 transition-colors ${CLASS_STYLE[r.cls]}`}
                     style={{ boxShadow: "var(--shadow-panel)" }}
                   >
@@ -584,6 +663,69 @@ function SessionDetail() {
           )}
         </div>
       </div>
+
+      <FinishSessionDialog
+        open={finishOpen}
+        onOpenChange={setFinishOpen}
+        sessionId={id}
+        lines={lines as LineSpec[]}
+        loopTypes={loopTypes}
+        wingLoopState={wingLoopState}
+        defaultComment={(session as { comment: string | null }).comment ?? null}
+        publishOnFinish={publishOnFinish}
+        onFinished={() => qc.invalidateQueries({ queryKey: ["session", id] })}
+      />
+
+      <ReviewFlagsDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        rows={flaggedRows}
+        onFocusLine={(lineId) => {
+          setReviewOpen(false);
+          const el = document.getElementById(`line-${lineId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-2", "ring-amber-500");
+            setTimeout(() => el.classList.remove("ring-2", "ring-amber-500"), 1500);
+          }
+        }}
+        onAcceptAll={() => {
+          setReviewOpen(false);
+          setFinishOpen(true);
+        }}
+      />
+
+      <Dialog open={remeasureOpen} onOpenChange={setRemeasureOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Re-measure lines</DialogTitle>
+            <DialogDescription>
+              Pick the lines to re-measure. The rest keep their current value in the new session.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 max-h-72 overflow-y-auto">
+            {(lines as LineSpec[]).map((l) => (
+              <label key={l.id} className="flex items-center gap-2 text-sm py-1">
+                <Checkbox
+                  checked={Boolean(remeasureSelected[l.id])}
+                  onCheckedChange={(v) => setRemeasureSelected({ ...remeasureSelected, [l.id]: v === true })}
+                />
+                <span className="w-8 text-muted-foreground text-xs">{l.line_group}</span>
+                <span className="font-mono text-xs">{l.label}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemeasureOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => remeasureMut.mutate()}
+              disabled={remeasureMut.isPending || Object.values(remeasureSelected).every((v) => !v)}
+            >
+              {remeasureMut.isPending ? "Creating…" : "Create re-measure session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
