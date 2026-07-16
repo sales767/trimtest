@@ -6,10 +6,12 @@ import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, FileDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { AoIDiagram, EstimatesDisclaimer } from "@/components/aoi-diagram";
+import { exportProtocolPdf, exportProtocolXlsx } from "@/lib/session-export";
 
 const sessionQuery = (id: string) =>
   queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
@@ -244,6 +246,17 @@ function SessionDetail() {
       () => toast.error("Could not copy link"),
     );
   }
+
+  const exportRows = rows.map((r) => ({
+    id: r.line.id,
+    label: r.line.label,
+    line_group: r.line.line_group,
+    factory: r.factory,
+    tol: r.tol,
+    measured: r.value ? Number(r.value) : null,
+    dev: r.dev,
+  }));
+  const wingLabel = `${wing.model.brand} ${wing.model.name}${wing.model.size ? ` · ${wing.model.size}` : ""}`;
 
   return (
     <div>
