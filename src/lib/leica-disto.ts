@@ -45,7 +45,7 @@ let distanceChar: BluetoothRemoteGATTCharacteristic | null = null;
 const waiters: Array<(mm: number) => void> = [];
 
 function onNotification(e: Event) {
-  const target = e.target as BluetoothRemoteGATTCharacteristic;
+  const target = e.target as unknown as BluetoothRemoteGATTCharacteristic;
   const dv = target.value;
   if (!dv) return;
   const meters = dv.getFloat32(0, true);
