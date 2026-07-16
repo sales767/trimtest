@@ -375,7 +375,17 @@ function SessionDetail() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-semibold text-primary">{r.line.label}</span>
-                      <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
+                      <div className="flex items-center gap-1">
+                        {flaggedByLine.get(r.line.id)?.flagged && (
+                          <span
+                            title={flaggedByLine.get(r.line.id)?.reason ?? "Implausible reading"}
+                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400"
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                          </span>
+                        )}
+                        <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
+                      </div>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                       factory {r.factory.toFixed(0)} ± {r.tol.toFixed(1)}
