@@ -126,21 +126,26 @@ export const finishSession = createServerFn({ method: "POST" })
     }
 
     // 3) Update session status/comment
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      comment?: string | null;
+      publish_anonymously?: boolean;
+      status?: "draft" | "complete" | "published";
+      share_token?: string;
+    } = {};
     if (data.comment !== undefined) patch.comment = data.comment;
     if (data.publish_anonymously !== undefined) patch.publish_anonymously = data.publish_anonymously;
     if (data.publish) {
       patch.status = "published";
-      const bytes = new Uint8Array(18);
-      crypto.getRandomValues(bytes);
-      const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-      // Only set token if none exists yet
       const { data: existing } = await context.supabase
         .from("measurement_sessions")
         .select("share_token")
         .eq("id", data.session_id)
         .maybeSingle();
-      if (!existing?.share_token) patch.share_token = token;
+      if (!existing?.share_token) {
+        const bytes = new Uint8Array(18);
+        crypto.getRandomValues(bytes);
+        patch.share_token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+      }
     } else {
       patch.status = "complete";
     }
