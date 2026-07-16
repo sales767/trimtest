@@ -38,6 +38,11 @@ const wingInput = z.object({
   model_id: z.string().uuid(),
   serial_number: z.string().min(1).max(80),
   owner_note: z.string().max(500).optional().nullable(),
+  production_date: z.string().date().nullable().optional(),
+  purchase_date: z.string().date().nullable().optional(),
+  first_flight_date: z.string().date().nullable().optional(),
+  wing_hours: z.number().min(0).max(100000).nullable().optional(),
+  line_set_hours: z.number().min(0).max(100000).nullable().optional(),
 });
 
 export const upsertWing = createServerFn({ method: "POST" })
@@ -45,10 +50,11 @@ export const upsertWing = createServerFn({ method: "POST" })
   .inputValidator((d) => wingInput.parse(d))
   .handler(async ({ data, context }) => {
     if (data.id) {
+      const { id, ...patch } = data;
       const { data: row, error } = await context.supabase
         .from("wings")
-        .update({ model_id: data.model_id, serial_number: data.serial_number, owner_note: data.owner_note })
-        .eq("id", data.id).select().single();
+        .update(patch)
+        .eq("id", id).select().single();
       if (error) throw new Error(error.message);
       return row;
     }
@@ -58,6 +64,41 @@ export const upsertWing = createServerFn({ method: "POST" })
       .select().single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+// Set/clear the current installed loop for a wing line, outside a session.
+export const updateWingLoop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      wing_id: z.string().uuid(),
+      line_spec_id: z.string().uuid(),
+      loop_type_id: z.string().uuid().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.loop_type_id === null) {
+      const { error } = await context.supabase
+        .from("wing_loop_state")
+        .delete()
+        .eq("wing_id", data.wing_id)
+        .eq("line_spec_id", data.line_spec_id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const { error } = await context.supabase
+      .from("wing_loop_state")
+      .upsert(
+        {
+          wing_id: data.wing_id,
+          line_spec_id: data.line_spec_id,
+          loop_type_id: data.loop_type_id,
+          updated_by: context.userId,
+        },
+        { onConflict: "wing_id,line_spec_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const deleteWing = createServerFn({ method: "POST" })
