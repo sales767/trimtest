@@ -19,18 +19,39 @@ export const getWing = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: wing, error } = await context.supabase
       .from("wings")
-      .select("*, model:wing_models(id, brand, name, size, cells)")
+      .select("*, model:wing_models(id, brand, name, size, cells, safety_notice, brake_measurement_supported)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!wing) throw new Error("Wing not found");
-    const { data: sessions, error: se } = await context.supabase
-      .from("measurement_sessions")
-      .select("id, session_date, status, notes, updated_at")
-      .eq("wing_id", data.id)
-      .order("session_date", { ascending: false });
-    if (se) throw new Error(se.message);
-    return { wing, sessions: sessions ?? [] };
+    const modelId = (wing.model as { id: string }).id;
+    const [sr, lr, wsr, mr, ltr, shr] = await Promise.all([
+      context.supabase
+        .from("measurement_sessions")
+        .select("id, session_date, status, notes, updated_at")
+        .eq("wing_id", data.id)
+        .order("session_date", { ascending: false }),
+      context.supabase.from("line_specs").select("*").eq("model_id", modelId).order("line_group").order("sort_order").order("label"),
+      context.supabase.from("wing_loop_state").select("line_spec_id, loop_type_id").eq("wing_id", data.id),
+      context.supabase.from("line_materials").select("id, name, diameter_mm").order("name"),
+      context.supabase.from("loop_types").select("id, name, sort_order").order("sort_order").order("name"),
+      context.supabase.from("loop_shortenings").select("material_id, loop_type_id, shortening_mm"),
+    ]);
+    if (sr.error) throw new Error(sr.error.message);
+    if (lr.error) throw new Error(lr.error.message);
+    if (wsr.error) throw new Error(wsr.error.message);
+    if (mr.error) throw new Error(mr.error.message);
+    if (ltr.error) throw new Error(ltr.error.message);
+    if (shr.error) throw new Error(shr.error.message);
+    return {
+      wing,
+      sessions: sr.data ?? [],
+      lines: lr.data ?? [],
+      wingLoopState: wsr.data ?? [],
+      materials: mr.data ?? [],
+      loopTypes: ltr.data ?? [],
+      shortenings: shr.data ?? [],
+    };
   });
 
 const wingInput = z.object({
