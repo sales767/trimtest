@@ -132,23 +132,28 @@ export const getSession = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: session, error } = await context.supabase
       .from("measurement_sessions")
-      .select("*, wing:wings(id, serial_number, owner_note, model:wing_models(id, brand, name, size, cells))")
+      .select(
+        "*, wing:wings(id, serial_number, owner_note, model:wing_models(id, brand, name, size, cells, safety_notice, brake_measurement_supported))",
+      )
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!session) throw new Error("Session not found");
     const modelId = (session.wing as { model: { id: string } }).model.id;
-    const [linesRes, measRes, matsRes, loopsRes, shortRes] = await Promise.all([
+    const wingId = (session.wing as { id: string }).id;
+    const [linesRes, measRes, matsRes, loopsRes, shortRes, wlsRes] = await Promise.all([
       context.supabase.from("line_specs").select("*").eq("model_id", modelId).order("line_group").order("sort_order").order("label"),
       context.supabase.from("measurements").select("*").eq("session_id", data.id),
       context.supabase.from("line_materials").select("id, name, diameter_mm").order("name"),
       context.supabase.from("loop_types").select("id, name, description, sort_order").order("sort_order").order("name"),
       context.supabase.from("loop_shortenings").select("material_id, loop_type_id, shortening_mm"),
+      context.supabase.from("wing_loop_state").select("line_spec_id, loop_type_id").eq("wing_id", wingId),
     ]);
     if (linesRes.error) throw new Error(linesRes.error.message);
     if (measRes.error) throw new Error(measRes.error.message);
     if (matsRes.error) throw new Error(matsRes.error.message);
     if (loopsRes.error) throw new Error(loopsRes.error.message);
     if (shortRes.error) throw new Error(shortRes.error.message);
+    if (wlsRes.error) throw new Error(wlsRes.error.message);
     return {
       session,
       lines: linesRes.data ?? [],
@@ -156,6 +161,7 @@ export const getSession = createServerFn({ method: "GET" })
       materials: matsRes.data ?? [],
       loopTypes: loopsRes.data ?? [],
       shortenings: shortRes.data ?? [],
+      wingLoopState: wlsRes.data ?? [],
     };
   });
 
