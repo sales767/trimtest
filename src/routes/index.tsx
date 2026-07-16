@@ -21,9 +21,17 @@ function Landing() {
             <Gauge className="h-6 w-6 text-primary" />
             <span>Niviuk Measure</span>
           </div>
-          <Button asChild size="sm">
-            <Link to="/auth">Sign in</Link>
-          </Button>
+          <div className="flex items-center gap-4">
+            <nav className="hidden sm:flex gap-4 text-sm text-muted-foreground">
+              <Link to="/vision" className="hover:text-foreground">Vision</Link>
+              <Link to="/manual" className="hover:text-foreground">Manual</Link>
+              <Link to="/faq" className="hover:text-foreground">FAQ</Link>
+              <Link to="/feed" className="hover:text-foreground">Feed</Link>
+            </nav>
+            <Button asChild size="sm">
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          </div>
         </div>
       </header>
 

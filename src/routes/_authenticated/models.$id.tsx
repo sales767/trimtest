@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { getModel, upsertLine, deleteLine, bulkImportLines } from "@/lib/models.functions";
+import { getModel, upsertLine, deleteLine, bulkImportLines, upsertModel } from "@/lib/models.functions";
 import { listLoopCatalog } from "@/lib/materials.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Upload, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Upload, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -36,7 +36,30 @@ function ModelDetail() {
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(modelQuery(id));
   const { data: catalog } = useSuspenseQuery(catalogQuery);
-  const { model, lines } = data;
+  const { model, lines } = data as { model: { id: string; brand: string; name: string; size: string | null; cells: number | null; notes: string | null; safety_notice: string | null; brake_measurement_supported: boolean | null }; lines: { id: string; line_group: string; label: string; factory_length_mm: number | string; tolerance_mm: number | string; row_index: number; sort_order: number; material_id: string | null }[] };
+
+  const [safety, setSafety] = useState(model.safety_notice ?? "");
+  const [brakes, setBrakes] = useState(Boolean(model.brake_measurement_supported));
+  const saveModel = useMutation({
+    mutationFn: () =>
+      upsertModel({
+        data: {
+          id: model.id,
+          brand: model.brand,
+          name: model.name,
+          size: model.size,
+          cells: model.cells,
+          notes: model.notes,
+          safety_notice: safety || null,
+          brake_measurement_supported: brakes,
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["model", id] });
+      toast.success("Model settings saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -202,6 +225,22 @@ function ModelDetail() {
       />
 
       <div className="p-8 space-y-6">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle className="h-4 w-4 text-amber-600" /> Model safety &amp; capabilities
+          </div>
+          <Textarea rows={2} value={safety} placeholder="Safety notice shown on every wing of this model" onChange={(e) => setSafety(e.target.value)} />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={brakes} onChange={(e) => setBrakes(e.target.checked)} />
+            Brake measurement supported for this model
+          </label>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => saveModel.mutate()} disabled={saveModel.isPending}>
+              {saveModel.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+
         {grouped.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
             <p className="text-muted-foreground">No line specs yet.</p>

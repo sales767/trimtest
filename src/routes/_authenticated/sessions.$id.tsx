@@ -6,10 +6,12 @@ import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { AoIDiagram, EstimatesDisclaimer } from "@/components/aoi-diagram";
+import { exportProtocolPdf, exportProtocolXlsx } from "@/lib/session-export";
 
 const sessionQuery = (id: string) =>
   queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
@@ -245,6 +247,17 @@ function SessionDetail() {
     );
   }
 
+  const exportRows = rows.map((r) => ({
+    id: r.line.id,
+    label: r.line.label,
+    line_group: r.line.line_group,
+    factory: r.factory,
+    tol: r.tol,
+    measured: r.value ? Number(r.value) : null,
+    dev: r.dev,
+  }));
+  const wingLabel = `${wing.model.brand} ${wing.model.name}${wing.model.size ? ` · ${wing.model.size}` : ""}`;
+
   return (
     <div>
       <PageHeader
@@ -307,11 +320,6 @@ function SessionDetail() {
                         <ExternalLink className="h-4 w-4 mr-2" /> Open protocol
                       </a>
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={shareUrl} target="_blank" rel="noreferrer">
-                        <Printer className="h-4 w-4 mr-2" /> PDF
-                      </a>
-                    </Button>
                   </>
                 )}
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
@@ -319,6 +327,38 @@ function SessionDetail() {
                 </Button>
               </>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={measuredCount === 0}
+              onClick={() =>
+                exportProtocolPdf({
+                  wing_label: wingLabel,
+                  serial: wing.serial_number,
+                  session_date: session.session_date,
+                  rows: exportRows,
+                  notes: session.notes,
+                }).catch((e) => toast.error(e instanceof Error ? e.message : "PDF failed"))
+              }
+            >
+              <Printer className="h-4 w-4 mr-2" /> PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={measuredCount === 0}
+              onClick={() =>
+                exportProtocolXlsx({
+                  wing_label: wingLabel,
+                  serial: wing.serial_number,
+                  session_date: session.session_date,
+                  rows: exportRows,
+                  notes: session.notes,
+                }).catch((e) => toast.error(e instanceof Error ? e.message : "XLSX failed"))
+              }
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> XLSX
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this session?")) delMut.mutate(); }}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -327,6 +367,7 @@ function SessionDetail() {
       />
 
       <div className="p-8 space-y-6">
+        <EstimatesDisclaimer />
         {/* Summary */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <SummaryCard label="Measured" value={`${measuredCount} / ${totalLines}`} />
@@ -351,6 +392,8 @@ function SessionDetail() {
             </div>
           </div>
         )}
+
+        <AoIDiagram rows={exportRows} />
 
         {/* Measurement grid */}
         {grouped.length === 0 ? (

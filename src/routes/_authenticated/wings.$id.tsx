@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions, useQueries } from "@tanstack/react-query";
-import { getWing } from "@/lib/wings.functions";
+import { useSuspenseQuery, queryOptions, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getWing, upsertWing, updateWingLoop } from "@/lib/wings.functions";
 import { getSession } from "@/lib/sessions.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, GitCompare } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, ArrowRight, GitCompare, AlertTriangle, Lock } from "lucide-react";
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 
 const wingQuery = (id: string) =>
   queryOptions({ queryKey: ["wing", id], queryFn: () => getWing({ data: { id } }) });
@@ -35,13 +38,71 @@ function WingDetail() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(wingQuery(id));
   const wing = data.wing as {
-    id: string; serial_number: string; owner_note: string | null;
-    model: { id: string; brand: string; name: string; size: string | null; cells: number | null };
+    id: string;
+    serial_number: string;
+    owner_note: string | null;
+    production_date: string | null;
+    purchase_date: string | null;
+    first_flight_date: string | null;
+    wing_hours: number | null;
+    line_set_hours: number | null;
+    serial_checksum_valid: boolean | null;
+    model_id: string;
+    model: {
+      id: string;
+      brand: string;
+      name: string;
+      size: string | null;
+      cells: number | null;
+      safety_notice: string | null;
+      brake_measurement_supported: boolean | null;
+    };
   };
   const sessions = data.sessions;
+  const lines = (data as { lines?: { id: string; label: string; line_group: string; material_id: string | null }[] }).lines ?? [];
+  const loopState = (data as { wingLoopState?: { line_spec_id: string; loop_type_id: string | null }[] }).wingLoopState ?? [];
+  const loopTypes = (data as { loopTypes?: { id: string; name: string }[] }).loopTypes ?? [];
+  const qc = useQueryClient();
 
   const [aId, setAId] = useState<string | null>(null);
   const [bId, setBId] = useState<string | null>(null);
+
+  const [meta, setMeta] = useState({
+    production_date: wing.production_date ?? "",
+    purchase_date: wing.purchase_date ?? "",
+    first_flight_date: wing.first_flight_date ?? "",
+    wing_hours: wing.wing_hours != null ? String(wing.wing_hours) : "",
+    line_set_hours: wing.line_set_hours != null ? String(wing.line_set_hours) : "",
+  });
+  const metaMut = useMutation({
+    mutationFn: () =>
+      upsertWing({
+        data: {
+          id: wing.id,
+          model_id: wing.model_id,
+          serial_number: wing.serial_number,
+          production_date: meta.production_date || null,
+          purchase_date: meta.purchase_date || null,
+          first_flight_date: meta.first_flight_date || null,
+          wing_hours: meta.wing_hours ? Number(meta.wing_hours) : null,
+          line_set_hours: meta.line_set_hours ? Number(meta.line_set_hours) : null,
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wing", id] });
+      toast.success("Wing metadata saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const loopMut = useMutation({
+    mutationFn: (v: { line_spec_id: string; loop_type_id: string | null }) =>
+      updateWingLoop({ data: { wing_id: wing.id, ...v } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["wing", id] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const loopByLine = new Map(loopState.map((s) => [s.line_spec_id, s.loop_type_id]));
 
   return (
     <div>
@@ -56,6 +117,92 @@ function WingDetail() {
       />
 
       <div className="p-8 space-y-8">
+        {wing.model.safety_notice && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm flex gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-amber-700 dark:text-amber-400">Model safety notice</div>
+              <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{wing.model.safety_notice}</p>
+            </div>
+          </div>
+        )}
+
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Wing metadata</h2>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetaField label="Production date" locked={Boolean(wing.production_date)}>
+                <Input type="date" value={meta.production_date} disabled={Boolean(wing.production_date)} onChange={(e) => setMeta({ ...meta, production_date: e.target.value })} />
+              </MetaField>
+              <MetaField label="Purchase date" locked={Boolean(wing.purchase_date)}>
+                <Input type="date" value={meta.purchase_date} disabled={Boolean(wing.purchase_date)} onChange={(e) => setMeta({ ...meta, purchase_date: e.target.value })} />
+              </MetaField>
+              <MetaField label="First flight" locked={Boolean(wing.first_flight_date)}>
+                <Input type="date" value={meta.first_flight_date} disabled={Boolean(wing.first_flight_date)} onChange={(e) => setMeta({ ...meta, first_flight_date: e.target.value })} />
+              </MetaField>
+              <MetaField label="Wing hours">
+                <Input type="number" step="0.1" value={meta.wing_hours} onChange={(e) => setMeta({ ...meta, wing_hours: e.target.value })} />
+              </MetaField>
+              <MetaField label="Line-set hours">
+                <Input type="number" step="0.1" value={meta.line_set_hours} onChange={(e) => setMeta({ ...meta, line_set_hours: e.target.value })} />
+              </MetaField>
+              <div className="text-xs text-muted-foreground pt-6">
+                Serial checksum:{" "}
+                <span className={wing.serial_checksum_valid ? "text-emerald-600" : "text-amber-600"}>
+                  {wing.serial_checksum_valid ? "valid" : "not validated"}
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" onClick={() => metaMut.mutate()} disabled={metaMut.isPending}>
+                {metaMut.isPending ? "Saving…" : "Save metadata"}
+              </Button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Dates lock after first save; contact an admin to reopen.
+            </p>
+          </div>
+        </section>
+
+        {lines.length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Installed loops</h2>
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-muted-foreground text-xs">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Group</th>
+                    <th className="text-left px-3 py-2 font-medium">Line</th>
+                    <th className="text-left px-3 py-2 font-medium">Loop</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l) => (
+                    <tr key={l.id} className="border-t border-border">
+                      <td className="px-3 py-2 text-muted-foreground">{l.line_group}</td>
+                      <td className="px-3 py-2 font-mono">{l.label}</td>
+                      <td className="px-3 py-2">
+                        <select
+                          className="rounded border border-input bg-background text-xs h-8 px-2"
+                          value={loopByLine.get(l.id) ?? ""}
+                          onChange={(e) =>
+                            loopMut.mutate({ line_spec_id: l.id, loop_type_id: e.target.value || null })
+                          }
+                        >
+                          <option value="">— none —</option>
+                          {loopTypes.map((lt) => (
+                            <option key={lt.id} value={lt.id}>{lt.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">History</h2>
           {sessions.length === 0 ? (
@@ -120,6 +267,18 @@ function WingDetail() {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function MetaField({ label, locked, children }: { label: string; locked?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="flex items-center gap-1">
+        {label}
+        {locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+      </Label>
+      {children}
     </div>
   );
 }
