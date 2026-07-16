@@ -410,8 +410,8 @@ function SessionDetail() {
               </>
             )}
             {session.status === "draft" && (
-              <Button size="sm" onClick={() => statusMut.mutate("complete")} disabled={statusMut.isPending || measuredCount === 0}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />Mark complete
+              <Button size="sm" onClick={() => requestFinish(false)} disabled={measuredCount === 0}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />Finish session
               </Button>
             )}
             {session.status === "complete" && (
@@ -419,8 +419,11 @@ function SessionDetail() {
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("draft")}>
                   Back to draft
                 </Button>
-                <Button size="sm" onClick={() => statusMut.mutate("published")}>
+                <Button size="sm" onClick={() => requestFinish(true)}>
                   <Share2 className="h-4 w-4 mr-2" />Publish
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setRemeasureSelected({}); setRemeasureOpen(true); }}>
+                  <Repeat2 className="h-4 w-4 mr-2" /> Re-measure
                 </Button>
               </>
             )}
@@ -438,11 +441,19 @@ function SessionDetail() {
                     </Button>
                   </>
                 )}
+                <Button variant="outline" size="sm" onClick={() => { setRemeasureSelected({}); setRemeasureOpen(true); }}>
+                  <Repeat2 className="h-4 w-4 mr-2" /> Re-measure
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
                   Unpublish
                 </Button>
               </>
             )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/wings/$id/history" params={{ id: wing.id }}>
+                <History className="h-4 w-4 mr-2" /> Wing history
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
