@@ -522,6 +522,8 @@ function SessionDetail() {
 
         <AoIDiagram rows={exportRows} />
 
+        <LoopSimulator rows={simulatorRows} loopTypes={loopTypes} shortenings={shortenings} />
+
         {/* Measurement grid */}
         {grouped.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
@@ -660,6 +662,69 @@ function SessionDetail() {
           )}
         </div>
       </div>
+
+      <FinishSessionDialog
+        open={finishOpen}
+        onOpenChange={setFinishOpen}
+        sessionId={id}
+        lines={lines as LineSpec[]}
+        loopTypes={loopTypes}
+        wingLoopState={wingLoopState}
+        defaultComment={(session as { comment: string | null }).comment ?? null}
+        publishOnFinish={publishOnFinish}
+        onFinished={() => qc.invalidateQueries({ queryKey: ["session", id] })}
+      />
+
+      <ReviewFlagsDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        rows={flaggedRows}
+        onFocusLine={(lineId) => {
+          setReviewOpen(false);
+          const el = document.getElementById(`line-${lineId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-2", "ring-amber-500");
+            setTimeout(() => el.classList.remove("ring-2", "ring-amber-500"), 1500);
+          }
+        }}
+        onAcceptAll={() => {
+          setReviewOpen(false);
+          setFinishOpen(true);
+        }}
+      />
+
+      <Dialog open={remeasureOpen} onOpenChange={setRemeasureOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Re-measure lines</DialogTitle>
+            <DialogDescription>
+              Pick the lines to re-measure. The rest keep their current value in the new session.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 max-h-72 overflow-y-auto">
+            {(lines as LineSpec[]).map((l) => (
+              <label key={l.id} className="flex items-center gap-2 text-sm py-1">
+                <Checkbox
+                  checked={Boolean(remeasureSelected[l.id])}
+                  onCheckedChange={(v) => setRemeasureSelected({ ...remeasureSelected, [l.id]: v === true })}
+                />
+                <span className="w-8 text-muted-foreground text-xs">{l.line_group}</span>
+                <span className="font-mono text-xs">{l.label}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemeasureOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => remeasureMut.mutate()}
+              disabled={remeasureMut.isPending || Object.values(remeasureSelected).every((v) => !v)}
+            >
+              {remeasureMut.isPending ? "Creating…" : "Create re-measure session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
