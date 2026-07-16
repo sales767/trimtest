@@ -169,10 +169,42 @@ export const upsertMeasurement = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    // Compute plausibility flag: |deviation| > 4 * effective tolerance
+    const [{ data: spec, error: sre }, { data: sess, error: sse }] = await Promise.all([
+      context.supabase
+        .from("line_specs")
+        .select("factory_length_mm, tolerance_mm")
+        .eq("id", data.line_spec_id)
+        .maybeSingle(),
+      context.supabase
+        .from("measurement_sessions")
+        .select("tolerance_override_mm, offset_mm")
+        .eq("id", data.session_id)
+        .maybeSingle(),
+    ]);
+    if (sre) throw new Error(sre.message);
+    if (sse) throw new Error(sse.message);
+    const factory = Number(spec?.factory_length_mm ?? 0);
+    const specTol = Number(spec?.tolerance_mm ?? 10);
+    const override = sess?.tolerance_override_mm != null ? Number(sess.tolerance_override_mm) : null;
+    const offset = sess?.offset_mm != null ? Number(sess.offset_mm) : 0;
+    const effTol = override ?? specTol;
+    const adjusted = data.measured_mm - offset;
+    const dev = adjusted - factory;
+    const flagged = Math.abs(dev) > 4 * effTol;
+    const flag_reason = flagged
+      ? `|deviation| ${dev.toFixed(1)}mm exceeds 4×tolerance (${(4 * effTol).toFixed(1)}mm)`
+      : null;
     const { data: row, error } = await context.supabase
       .from("measurements")
       .upsert(
-        { session_id: data.session_id, line_spec_id: data.line_spec_id, measured_mm: data.measured_mm },
+        {
+          session_id: data.session_id,
+          line_spec_id: data.line_spec_id,
+          measured_mm: data.measured_mm,
+          flagged,
+          flag_reason,
+        },
         { onConflict: "session_id,line_spec_id" },
       )
       .select().single();
