@@ -9,6 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VisionRouteImport } from './routes/vision'
+import { Route as ManualRouteImport } from './routes/manual'
+import { Route as FeedRouteImport } from './routes/feed'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +29,26 @@ import { Route as AuthenticatedWingsIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedSessionsIdRouteImport } from './routes/_authenticated/sessions.$id'
 import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
 
+const VisionRoute = VisionRouteImport.update({
+  id: '/vision',
+  path: '/vision',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualRoute = ManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -103,6 +127,10 @@ const AuthenticatedModelsIdRoute = AuthenticatedModelsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/faq': typeof FaqRoute
+  '/feed': typeof FeedRoute
+  '/manual': typeof ManualRoute
+  '/vision': typeof VisionRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
   '/materials': typeof AuthenticatedMaterialsRoute
@@ -119,6 +147,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/faq': typeof FaqRoute
+  '/feed': typeof FeedRoute
+  '/manual': typeof ManualRoute
+  '/vision': typeof VisionRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
   '/materials': typeof AuthenticatedMaterialsRoute
@@ -137,6 +169,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/faq': typeof FaqRoute
+  '/feed': typeof FeedRoute
+  '/manual': typeof ManualRoute
+  '/vision': typeof VisionRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/database': typeof AuthenticatedDatabaseRoute
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
@@ -155,6 +191,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/faq'
+    | '/feed'
+    | '/manual'
+    | '/vision'
     | '/dashboard'
     | '/database'
     | '/materials'
@@ -171,6 +211,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/faq'
+    | '/feed'
+    | '/manual'
+    | '/vision'
     | '/dashboard'
     | '/database'
     | '/materials'
@@ -188,6 +232,10 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/faq'
+    | '/feed'
+    | '/manual'
+    | '/vision'
     | '/_authenticated/dashboard'
     | '/_authenticated/database'
     | '/_authenticated/materials'
@@ -206,11 +254,43 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  FaqRoute: typeof FaqRoute
+  FeedRoute: typeof FeedRoute
+  ManualRoute: typeof ManualRoute
+  VisionRoute: typeof VisionRoute
   ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vision': {
+      id: '/vision'
+      path: '/vision'
+      fullPath: '/vision'
+      preLoaderRoute: typeof VisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual': {
+      id: '/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof ManualRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -383,6 +463,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  FaqRoute: FaqRoute,
+  FeedRoute: FeedRoute,
+  ManualRoute: ManualRoute,
+  VisionRoute: VisionRoute,
   ShareTokenRoute: ShareTokenRoute,
 }
 export const routeTree = rootRouteImport
