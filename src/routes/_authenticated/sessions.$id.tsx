@@ -320,11 +320,6 @@ function SessionDetail() {
                         <ExternalLink className="h-4 w-4 mr-2" /> Open protocol
                       </a>
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={shareUrl} target="_blank" rel="noreferrer">
-                        <Printer className="h-4 w-4 mr-2" /> PDF
-                      </a>
-                    </Button>
                   </>
                 )}
                 <Button variant="outline" size="sm" onClick={() => statusMut.mutate("complete")}>
@@ -332,6 +327,38 @@ function SessionDetail() {
                 </Button>
               </>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={measuredCount === 0}
+              onClick={() =>
+                exportProtocolPdf({
+                  wing_label: wingLabel,
+                  serial: wing.serial_number,
+                  session_date: session.session_date,
+                  rows: exportRows,
+                  notes: session.notes,
+                }).catch((e) => toast.error(e instanceof Error ? e.message : "PDF failed"))
+              }
+            >
+              <Printer className="h-4 w-4 mr-2" /> PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={measuredCount === 0}
+              onClick={() =>
+                exportProtocolXlsx({
+                  wing_label: wingLabel,
+                  serial: wing.serial_number,
+                  session_date: session.session_date,
+                  rows: exportRows,
+                  notes: session.notes,
+                }).catch((e) => toast.error(e instanceof Error ? e.message : "XLSX failed"))
+              }
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> XLSX
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this session?")) delMut.mutate(); }}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -340,6 +367,7 @@ function SessionDetail() {
       />
 
       <div className="p-8 space-y-6">
+        <EstimatesDisclaimer />
         {/* Summary */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <SummaryCard label="Measured" value={`${measuredCount} / ${totalLines}`} />
@@ -364,6 +392,8 @@ function SessionDetail() {
             </div>
           </div>
         )}
+
+        <AoIDiagram rows={exportRows} />
 
         {/* Measurement grid */}
         {grouped.length === 0 ? (
