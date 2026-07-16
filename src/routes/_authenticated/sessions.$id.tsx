@@ -542,6 +542,7 @@ function SessionDetail() {
                 {g.items.map((r) => (
                   <div
                     key={r.line.id}
+                    id={`line-${r.line.id}`}
                     className={`rounded-md border p-3 transition-colors ${CLASS_STYLE[r.cls]}`}
                     style={{ boxShadow: "var(--shadow-panel)" }}
                   >
