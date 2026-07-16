@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -55,34 +55,44 @@ export function FinishSessionDialog({
   const [cascades, setCascades] = useState<{ line_group: string; description: string }[]>([]);
   const [inserts, setInserts] = useState<{ line_spec_id: string | null; description: string; length_change_mm: number }[]>([]);
 
-  // Pre-load existing extras if the dialog re-opens
-  useQuery({
+  // Pre-load existing extras if the dialog re-opens.
+  const extrasQ = useQuery({
     queryKey: ["session-extras", sessionId],
     queryFn: () => getSessionExtras({ data: { session_id: sessionId } }),
     enabled: open,
-    // Seed local state on first fetch
-    select: (data) => {
-      if (data.cascades.length && cascades.length === 0) {
-        setHasCascade(true);
-        setCascades(data.cascades.map((c) => ({ line_group: c.line_group, description: c.description })));
-      }
-      if (data.inserts.length && inserts.length === 0) {
-        setHasInserts(true);
-        setInserts(data.inserts.map((i) => ({
+  });
+  // Seed local state once per fetched payload — never from inside `select`.
+  useEffect(() => {
+    const data = extrasQ.data;
+    if (!data) return;
+    if (data.cascades.length && cascades.length === 0) {
+      setHasCascade(true);
+      setCascades(data.cascades.map((c) => ({ line_group: c.line_group, description: c.description })));
+    }
+    if (data.inserts.length && inserts.length === 0) {
+      setHasInserts(true);
+      setInserts(
+        data.inserts.map((i) => ({
           line_spec_id: i.line_spec_id ?? null,
           description: i.description,
           length_change_mm: Number(i.length_change_mm),
-        })));
-      }
-      if (data.loopChanges.length && Object.keys(changes).length === 0) {
-        setChangedLoops(true);
-        const patch: Record<string, string> = {};
-        for (const c of data.loopChanges) patch[c.line_spec_id] = c.new_loop_type_id ?? "";
-        setChanges(patch);
-      }
-      return data;
-    },
-  });
+        })),
+      );
+    }
+    if (data.loopChanges.length && Object.keys(changes).length === 0) {
+      setChangedLoops(true);
+      const patch: Record<string, string> = {};
+      for (const c of data.loopChanges) patch[c.line_spec_id] = c.new_loop_type_id ?? "";
+      setChanges(patch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrasQ.data]);
+
+  // When the dialog re-opens for a different default comment, sync it.
+  useEffect(() => {
+    if (open) setComment(defaultComment ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultComment]);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -287,8 +297,8 @@ function YesNo({ label, value, onChange }: { label: string; value: boolean; onCh
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-medium">{label}</span>
       <div className="flex rounded-md border border-border overflow-hidden text-xs">
-        <button className={`px-3 py-1 ${!value ? "bg-primary text-primary-foreground" : "bg-background"}`} onClick={() => onChange(false)}>No</button>
-        <button className={`px-3 py-1 ${value ? "bg-primary text-primary-foreground" : "bg-background"}`} onClick={() => onChange(true)}>Yes</button>
+        <button type="button" className={`px-3 py-1 ${!value ? "bg-primary text-primary-foreground" : "bg-background"}`} onClick={() => onChange(false)}>No</button>
+        <button type="button" className={`px-3 py-1 ${value ? "bg-primary text-primary-foreground" : "bg-background"}`} onClick={() => onChange(true)}>Yes</button>
       </div>
     </div>
   );
