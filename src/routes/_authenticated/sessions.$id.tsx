@@ -141,6 +141,11 @@ function SessionDetail() {
   });
 
   const [notes, setNotes] = useState(session.notes ?? "");
+  // Keep local notes in sync when the server sends a fresh session payload
+  // (e.g. after invalidateQueries following a save or status change).
+  useEffect(() => {
+    setNotes(session.notes ?? "");
+  }, [session.notes]);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
   const [laserOn, setLaserOn] = useState(false);
