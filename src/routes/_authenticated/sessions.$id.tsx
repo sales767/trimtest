@@ -494,6 +494,18 @@ function SessionDetail() {
                       placeholder="mm"
                       className="mt-2 font-mono text-lg tabular-nums h-9"
                     />
+                    {!readOnly && laserOn && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-1 h-7 w-full text-[10px]"
+                        disabled={laserBusy === r.line.id}
+                        onClick={() => readLaserFor(r.line.id, r.tol)}
+                      >
+                        <Crosshair className="h-3 w-3 mr-1" />
+                        {laserBusy === r.line.id ? "Waiting…" : "Read laser"}
+                      </Button>
+                    )}
                     <div className="mt-1 font-mono text-xs tabular-nums h-4">
                       {r.dev === null ? (
                         <span className="text-muted-foreground">—</span>
