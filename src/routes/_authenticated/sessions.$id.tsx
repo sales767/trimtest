@@ -6,12 +6,13 @@ import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { AoIDiagram, EstimatesDisclaimer } from "@/components/aoi-diagram";
 import { exportProtocolPdf, exportProtocolXlsx } from "@/lib/session-export";
+import { isLaserSupported, isLaserConnected, connectLaser, disconnectLaser, readNextDistanceMm } from "@/lib/leica-disto";
 
 const sessionQuery = (id: string) =>
   queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
@@ -133,6 +134,45 @@ function SessionDetail() {
   const [notes, setNotes] = useState(session.notes ?? "");
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
+  const [laserOn, setLaserOn] = useState(false);
+  const [laserBusy, setLaserBusy] = useState<string | null>(null);
+
+  async function toggleLaser() {
+    if (laserOn || isLaserConnected()) {
+      disconnectLaser();
+      setLaserOn(false);
+      toast.info("Laser disconnected");
+      return;
+    }
+    try {
+      const name = await connectLaser();
+      setLaserOn(true);
+      toast.success(`Connected to ${name}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not connect");
+    }
+  }
+
+  async function readLaserFor(line_spec_id: string, tolerance_mm: number) {
+    setLaserBusy(line_spec_id);
+    try {
+      const mm = await readNextDistanceMm();
+      // "laser on, discard implausible" — reject anything absurd for a paraglider line
+      if (mm < 100 || mm > 15000) {
+        toast.error(`Discarded implausible reading: ${mm} mm`);
+        return;
+      }
+      // Local update + save (bypass the debounce)
+      setValues((v) => ({ ...v, [line_spec_id]: String(mm) }));
+      saveMut.mutate({ line_spec_id, measured_mm: mm });
+      // Suppress the unused var warning
+      void tolerance_mm;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No reading");
+    } finally {
+      setLaserBusy(null);
+    }
+  }
 
   async function handleImportFile(file: File) {
     setImporting(true);
@@ -273,6 +313,17 @@ function SessionDetail() {
             </Button>
             {!readOnly && (
               <>
+                {isLaserSupported() && (
+                  <Button
+                    variant={laserOn ? "default" : "outline"}
+                    size="sm"
+                    onClick={toggleLaser}
+                    title="Web Bluetooth · Leica DISTO"
+                  >
+                    <Radio className="h-4 w-4 mr-2" />
+                    {laserOn ? "Laser on" : "Laser"}
+                  </Button>
+                )}
                 <input
                   ref={importInputRef}
                   type="file"
