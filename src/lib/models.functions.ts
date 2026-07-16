@@ -43,6 +43,8 @@ const modelInput = z.object({
   size: z.string().max(40).optional().nullable(),
   cells: z.number().int().positive().max(200).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  brake_measurement_supported: z.boolean().optional(),
+  safety_notice: z.string().max(2000).optional().nullable(),
 });
 
 export const upsertModel = createServerFn({ method: "POST" })
@@ -53,7 +55,15 @@ export const upsertModel = createServerFn({ method: "POST" })
     if (data.id) {
       const { data: row, error } = await context.supabase
         .from("wing_models")
-        .update({ brand: data.brand, name: data.name, size: data.size, cells: data.cells, notes: data.notes })
+        .update({
+          brand: data.brand,
+          name: data.name,
+          size: data.size,
+          cells: data.cells,
+          notes: data.notes,
+          brake_measurement_supported: data.brake_measurement_supported,
+          safety_notice: data.safety_notice,
+        })
         .eq("id", data.id)
         .select()
         .single();
