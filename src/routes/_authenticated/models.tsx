@@ -29,7 +29,15 @@ function ModelsPage() {
   const { data } = useSuspenseQuery(modelsQuery);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ brand: "Niviuk", name: "", size: "", cells: "", notes: "" });
+  const [form, setForm] = useState({
+    brand: "Niviuk",
+    name: "",
+    size: "",
+    cells: "",
+    notes: "",
+    safety_notice: "",
+    brake_measurement_supported: true,
+  });
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -40,12 +48,14 @@ function ModelsPage() {
           size: form.size || null,
           cells: form.cells ? Number(form.cells) : null,
           notes: form.notes || null,
+          safety_notice: form.safety_notice || null,
+          brake_measurement_supported: form.brake_measurement_supported,
         },
       }),
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: ["models"] });
       setOpen(false);
-      setForm({ brand: "Niviuk", name: "", size: "", cells: "", notes: "" });
+      setForm({ brand: "Niviuk", name: "", size: "", cells: "", notes: "", safety_notice: "", brake_measurement_supported: true });
       navigate({ to: "/models/$id", params: { id: (row as { id: string }).id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -95,6 +105,14 @@ function ModelsPage() {
                   <Label>Notes</Label>
                   <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                 </div>
+                <div>
+                  <Label>Safety notice (optional)</Label>
+                  <Textarea rows={2} placeholder="Shown as a banner on every wing of this model" value={form.safety_notice} onChange={(e) => setForm({ ...form, safety_notice: e.target.value })} />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.brake_measurement_supported} onChange={(e) => setForm({ ...form, brake_measurement_supported: e.target.checked })} />
+                  Brake measurement supported
+                </label>
                 <DialogFooter>
                   <Button type="submit" disabled={createMut.isPending}>
                     {createMut.isPending ? "Creating…" : "Create"}
