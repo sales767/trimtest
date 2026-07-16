@@ -250,6 +250,60 @@ function SessionsPage() {
                     <Label>Notes (optional)</Label>
                     <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                   </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Measurement order</Label>
+                      <Select
+                        value={form.measurement_order}
+                        onValueChange={(v) => setForm({ ...form, measurement_order: v as "rows" | "columns" | "sections" })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rows">Rows</SelectItem>
+                          <SelectItem value="columns">Columns</SelectItem>
+                          <SelectItem value="sections">Sections</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Laser offset (mm)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.offset_mm}
+                        onChange={(e) => setForm({ ...form, offset_mm: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Tolerance override (mm)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.tolerance_override_mm}
+                        onChange={(e) => setForm({ ...form, tolerance_override_mm: e.target.value })}
+                        placeholder="use line spec"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 pt-6">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.includes_brakes}
+                          onChange={(e) => setForm({ ...form, includes_brakes: e.target.checked })}
+                        />
+                        Include brakes
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.publish_anonymously}
+                          onChange={(e) => setForm({ ...form, publish_anonymously: e.target.checked })}
+                        />
+                        Publish anonymously
+                      </label>
+                    </div>
+                  </div>
                   <DialogFooter>
                     <Button type="submit" disabled={start.isPending || !form.model_id || !form.serial_number.trim()}>
                       {start.isPending ? "Starting…" : "Start measuring"}
