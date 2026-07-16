@@ -97,6 +97,7 @@ function SessionDetail() {
     owner_note: string | null;
     model: { id: string; brand: string; name: string; size: string | null; cells: number | null };
   };
+  const wingLoopState = (data as { wingLoopState?: WingLoop[] }).wingLoopState ?? [];
 
   // Local edit state, keyed by line_spec_id
   const initial = useMemo(() => {
@@ -144,6 +145,29 @@ function SessionDetail() {
   const [importing, setImporting] = useState(false);
   const [laserOn, setLaserOn] = useState(false);
   const [laserBusy, setLaserBusy] = useState<string | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [publishOnFinish, setPublishOnFinish] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [remeasureOpen, setRemeasureOpen] = useState(false);
+  const [remeasureSelected, setRemeasureSelected] = useState<Record<string, boolean>>({});
+
+  const remeasureMut = useMutation({
+    mutationFn: () =>
+      createRemeasureSession({
+        data: {
+          previous_session_id: id,
+          remeasure_line_ids: Object.keys(remeasureSelected).filter((k) => remeasureSelected[k]),
+          carry_over: true,
+        },
+      }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      setRemeasureOpen(false);
+      setRemeasureSelected({});
+      navigate({ to: "/sessions/$id", params: { id: res.session_id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   async function toggleLaser() {
     if (laserOn || isLaserConnected()) {
@@ -303,7 +327,40 @@ function SessionDetail() {
     tol: r.tol,
     measured: r.value ? Number(r.value) : null,
     dev: r.dev,
+    row_index: r.line.row_index ?? null,
+    point_index: r.line.point_index ?? null,
   }));
+  // Rows for the loop simulator (needs material_id + numeric dev)
+  const simulatorRows = rows.map((r) => ({
+    line_spec_id: r.line.id,
+    label: r.line.label,
+    line_group: r.line.line_group,
+    factory: r.factory,
+    tol: r.tol,
+    measured: r.value ? Number(r.value) : null,
+    dev: r.dev,
+    material_id: r.line.material_id,
+  }));
+  // Collect flagged readings for the review gate
+  const flaggedRows = rows
+    .filter((r) => flaggedByLine.get(r.line.id)?.flagged)
+    .map((r) => ({
+      line_spec_id: r.line.id,
+      label: r.line.label,
+      line_group: r.line.line_group,
+      measured: r.value ? Number(r.value) : null,
+      dev: r.dev,
+      reason: flaggedByLine.get(r.line.id)?.reason ?? "Implausible reading",
+    }));
+
+  function requestFinish(publish: boolean) {
+    setPublishOnFinish(publish);
+    if (flaggedRows.length > 0) {
+      setReviewOpen(true);
+      return;
+    }
+    setFinishOpen(true);
+  }
   const wingLabel = `${wing.model.brand} ${wing.model.name}${wing.model.size ? ` · ${wing.model.size}` : ""}`;
 
   return (
