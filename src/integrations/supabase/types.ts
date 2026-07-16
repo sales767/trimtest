@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      cascade_loop_changes: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          line_group: Database["public"]["Enums"]["line_group"]
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          line_group: Database["public"]["Enums"]["line_group"]
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_group?: Database["public"]["Enums"]["line_group"]
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cascade_loop_changes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "measurement_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      line_inserts: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          length_change_mm: number
+          line_spec_id: string | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          length_change_mm?: number
+          line_spec_id?: string | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          length_change_mm?: number
+          line_spec_id?: string | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_inserts_line_spec_id_fkey"
+            columns: ["line_spec_id"]
+            isOneToOne: false
+            referencedRelation: "line_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_inserts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "measurement_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       line_materials: {
         Row: {
           created_at: string
@@ -50,7 +130,9 @@ export type Database = {
           line_group: Database["public"]["Enums"]["line_group"]
           material_id: string | null
           model_id: string
+          point_index: number | null
           row_index: number
+          side: Database["public"]["Enums"]["line_side"] | null
           sort_order: number
           tolerance_mm: number
           updated_at: string
@@ -63,7 +145,9 @@ export type Database = {
           line_group: Database["public"]["Enums"]["line_group"]
           material_id?: string | null
           model_id: string
+          point_index?: number | null
           row_index?: number
+          side?: Database["public"]["Enums"]["line_side"] | null
           sort_order?: number
           tolerance_mm?: number
           updated_at?: string
@@ -76,7 +160,9 @@ export type Database = {
           line_group?: Database["public"]["Enums"]["line_group"]
           material_id?: string | null
           model_id?: string
+          point_index?: number | null
           row_index?: number
+          side?: Database["public"]["Enums"]["line_side"] | null
           sort_order?: number
           tolerance_mm?: number
           updated_at?: string
@@ -170,41 +256,69 @@ export type Database = {
       measurement_sessions: {
         Row: {
           checksum: string | null
+          comment: string | null
           created_at: string
           id: string
+          includes_brakes: boolean
+          measurement_order: Database["public"]["Enums"]["measurement_order"]
           notes: string | null
+          offset_mm: number | null
+          previous_session_id: string | null
+          publish_anonymously: boolean
           session_date: string
           share_token: string
           status: Database["public"]["Enums"]["session_status"]
           technician_id: string
+          tolerance_override_mm: number | null
           updated_at: string
           wing_id: string
         }
         Insert: {
           checksum?: string | null
+          comment?: string | null
           created_at?: string
           id?: string
+          includes_brakes?: boolean
+          measurement_order?: Database["public"]["Enums"]["measurement_order"]
           notes?: string | null
+          offset_mm?: number | null
+          previous_session_id?: string | null
+          publish_anonymously?: boolean
           session_date?: string
           share_token?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id: string
+          tolerance_override_mm?: number | null
           updated_at?: string
           wing_id: string
         }
         Update: {
           checksum?: string | null
+          comment?: string | null
           created_at?: string
           id?: string
+          includes_brakes?: boolean
+          measurement_order?: Database["public"]["Enums"]["measurement_order"]
           notes?: string | null
+          offset_mm?: number | null
+          previous_session_id?: string | null
+          publish_anonymously?: boolean
           session_date?: string
           share_token?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id?: string
+          tolerance_override_mm?: number | null
           updated_at?: string
           wing_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "measurement_sessions_previous_session_id_fkey"
+            columns: ["previous_session_id"]
+            isOneToOne: false
+            referencedRelation: "measurement_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "measurement_sessions_wing_id_fkey"
             columns: ["wing_id"]
@@ -218,6 +332,8 @@ export type Database = {
         Row: {
           created_at: string
           deviation_mm: number | null
+          flag_reason: string | null
+          flagged: boolean
           id: string
           line_spec_id: string
           measured_mm: number
@@ -227,6 +343,8 @@ export type Database = {
         Insert: {
           created_at?: string
           deviation_mm?: number | null
+          flag_reason?: string | null
+          flagged?: boolean
           id?: string
           line_spec_id: string
           measured_mm: number
@@ -236,6 +354,8 @@ export type Database = {
         Update: {
           created_at?: string
           deviation_mm?: number | null
+          flag_reason?: string | null
+          flagged?: boolean
           id?: string
           line_spec_id?: string
           measured_mm?: number
@@ -262,26 +382,97 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          default_tolerance_mm: number
           email: string | null
           full_name: string | null
           id: string
+          laser_offset_mm: number
+          preferred_measurement_order: Database["public"]["Enums"]["measurement_order"]
           updated_at: string
         }
         Insert: {
           created_at?: string
+          default_tolerance_mm?: number
           email?: string | null
           full_name?: string | null
           id: string
+          laser_offset_mm?: number
+          preferred_measurement_order?: Database["public"]["Enums"]["measurement_order"]
           updated_at?: string
         }
         Update: {
           created_at?: string
+          default_tolerance_mm?: number
           email?: string | null
           full_name?: string | null
           id?: string
+          laser_offset_mm?: number
+          preferred_measurement_order?: Database["public"]["Enums"]["measurement_order"]
           updated_at?: string
         }
         Relationships: []
+      }
+      session_loop_changes: {
+        Row: {
+          applied: boolean
+          created_at: string
+          id: string
+          line_spec_id: string
+          new_loop_type_id: string | null
+          previous_loop_type_id: string | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          applied?: boolean
+          created_at?: string
+          id?: string
+          line_spec_id: string
+          new_loop_type_id?: string | null
+          previous_loop_type_id?: string | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          applied?: boolean
+          created_at?: string
+          id?: string
+          line_spec_id?: string
+          new_loop_type_id?: string | null
+          previous_loop_type_id?: string | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_loop_changes_line_spec_id_fkey"
+            columns: ["line_spec_id"]
+            isOneToOne: false
+            referencedRelation: "line_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_loop_changes_new_loop_type_id_fkey"
+            columns: ["new_loop_type_id"]
+            isOneToOne: false
+            referencedRelation: "loop_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_loop_changes_previous_loop_type_id_fkey"
+            columns: ["previous_loop_type_id"]
+            isOneToOne: false
+            referencedRelation: "loop_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_loop_changes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "measurement_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -304,8 +495,61 @@ export type Database = {
         }
         Relationships: []
       }
+      wing_loop_state: {
+        Row: {
+          created_at: string
+          id: string
+          line_spec_id: string
+          loop_type_id: string | null
+          updated_at: string
+          updated_by: string | null
+          wing_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_spec_id: string
+          loop_type_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wing_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_spec_id?: string
+          loop_type_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wing_loop_state_line_spec_id_fkey"
+            columns: ["line_spec_id"]
+            isOneToOne: false
+            referencedRelation: "line_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wing_loop_state_loop_type_id_fkey"
+            columns: ["loop_type_id"]
+            isOneToOne: false
+            referencedRelation: "loop_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wing_loop_state_wing_id_fkey"
+            columns: ["wing_id"]
+            isOneToOne: false
+            referencedRelation: "wings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wing_models: {
         Row: {
+          brake_measurement_supported: boolean
           brand: string
           cells: number | null
           created_at: string
@@ -313,10 +557,12 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          safety_notice: string | null
           size: string | null
           updated_at: string
         }
         Insert: {
+          brake_measurement_supported?: boolean
           brand?: string
           cells?: number | null
           created_at?: string
@@ -324,10 +570,12 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          safety_notice?: string | null
           size?: string | null
           updated_at?: string
         }
         Update: {
+          brake_measurement_supported?: boolean
           brand?: string
           cells?: number | null
           created_at?: string
@@ -335,6 +583,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          safety_notice?: string | null
           size?: string | null
           updated_at?: string
         }
@@ -344,29 +593,47 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          first_flight_date: string | null
           id: string
+          line_set_hours: number | null
           model_id: string
           owner_note: string | null
+          production_date: string | null
+          purchase_date: string | null
+          serial_checksum_valid: boolean
           serial_number: string
           updated_at: string
+          wing_hours: number | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          first_flight_date?: string | null
           id?: string
+          line_set_hours?: number | null
           model_id: string
           owner_note?: string | null
+          production_date?: string | null
+          purchase_date?: string | null
+          serial_checksum_valid?: boolean
           serial_number: string
           updated_at?: string
+          wing_hours?: number | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          first_flight_date?: string | null
           id?: string
+          line_set_hours?: number | null
           model_id?: string
           owner_note?: string | null
+          production_date?: string | null
+          purchase_date?: string | null
+          serial_checksum_valid?: boolean
           serial_number?: string
           updated_at?: string
+          wing_hours?: number | null
         }
         Relationships: [
           {
@@ -383,11 +650,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "technician"
       line_group: "A" | "B" | "C" | "D" | "BR" | "STAB"
+      line_side: "left" | "right" | "center"
+      measurement_order: "rows" | "columns" | "sections"
       session_status: "draft" | "complete" | "published"
     }
     CompositeTypes: {
@@ -518,6 +793,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "technician"],
       line_group: ["A", "B", "C", "D", "BR", "STAB"],
+      line_side: ["left", "right", "center"],
+      measurement_order: ["rows", "columns", "sections"],
       session_status: ["draft", "complete", "published"],
     },
   },

@@ -1,66 +1,80 @@
+# Paritat amb we-measure.io — pla per fases
 
-# Niviuk Measure — Pla per fases
+Aquest és un abast molt gran (setmanes de feina real). L'atacaré per fases, cadascuna en un torn separat, perquè puguis validar-ne el resultat abans de passar a la següent. Aquest missatge fixa la ruta; al final començo pel primer bloc.
 
-Eina interna Niviuk per mesurar veles al taller: base de dades de models amb valors de fàbrica, sessions de mesura per número de sèrie, comparació valor real vs fàbrica amb desviacions, i protocols exportables.
+## Decisions per defecte (canvieu-les si voleu abans que continuï)
 
-L'entrego per fases perquè és una app amb força volum. Cada fase queda funcional i validable abans de passar a la següent.
+- **Left/Right migration**: afegeixo `side` (`left`/`right`/`center`) i `point_index` a `line_specs` com a **nullables**. Els linemaps actuals queden com estan (side NULL = línia única, retrocompatible). Els models nous demanaran side/point_index.
+- **Bluetooth làser**: **posposat** a la Fase 2b. Primer arribo a un flux manual + XLSX sòlid, després driver Leica DISTO amb feature-detect.
+- **Estimates disclaimer**: banner persistent i discret a totes les vistes de simulació/resultat.
+- **PDF/XLSX export**: client-side amb `jspdf` + `xlsx` (ja instal·lada per l'import).
+- **RLS**: cada taula nova replica el patró existent (owner authenticated + admin override, anon només si sessió publicada).
 
-## Stack
+## Fases i ordre d'execució
 
-- TanStack Start + React + Tailwind + shadcn (ja al template)
-- Lovable Cloud (Postgres + Auth): login email/password per tècnics
-- Tot el CRUD via `createServerFn` amb RLS
+### Fase 1 — Esquema (aquest torn)
+Una sola migració que afegeix:
+- `line_specs.side` (enum nullable), `line_specs.point_index` (int nullable).
+- `wings`: `production_date`, `purchase_date`, `first_flight_date`, `wing_hours`, `line_set_hours`, `serial_checksum_valid` (bool), i flag `locked_fields` per fer read-only després del primer desat.
+- `wing_models`: `brake_measurement_supported` (bool), `safety_notice` (text).
+- Nova taula `wing_loop_state` (wing_id, line_spec_id, loop_type_id).
+- `measurement_sessions`: `measurement_order` (enum rows/columns/sections), `includes_brakes`, `tolerance_override_mm`, `offset_mm`, `comment`, `publish_anonymously`, `previous_session_id`.
+- Noves taules: `session_loop_changes`, `line_inserts`, `cascade_loop_changes`.
+- `measurements`: `flagged`, `flag_reason`.
+- `profiles`: `laser_offset_mm`, `preferred_measurement_order`, `default_tolerance_mm`.
+- RLS + GRANTs per a totes les taules noves.
 
-Sense Web Bluetooth de moment — camps numèrics per introduir mesures.
+### Fase 2 — Captura reforçada
+- Camps de setup de sessió (order, brakes, tolerance override, offset, comment, anonymous).
+- Auto-advance de focus segons `measurement_order`.
+- Import XLSX (parseig + preview + commit).
+- Editor de `wing_loop_state` i auto-import a sessió nova.
+- Metadades read-once de wing.
 
-## Model de dades
+### Fase 2b — Bluetooth làser
+- Driver interface pluggable, implementació Leica DISTO BLE, feature-detect Web Bluetooth, mode "laser on, discard implausible".
 
-```text
-profiles           id (=auth.users), full_name, role
-user_roles         user_id, role (admin | technician)  -- taula separada
-wing_models        id, brand, name, size, cells, notes  (Niviuk Artik, Klimber, etc.)
-line_specs         id, model_id, group (A/B/C/D/BR), row (1..n), 
-                   label (A1, A2, BR1...), factory_length_mm, tolerance_mm
-wings              id, model_id, serial_number, owner_note, created_by
-measurement_sessions  id, wing_id, technician_id, session_date, 
-                      status (draft|complete|published), share_token, checksum, notes
-measurements       id, session_id, line_spec_id, measured_mm, deviation_mm
-```
+### Fase 3 — Plausibilitat i review
+- Fórmula de desviació relativa per grup, flag automàtic al desar mesura (trigger o dins `upsertMeasurement`).
+- Review dialog: agrupa per grup, re-read per línia, gate "continue to simulation" a zero flags.
 
-RLS: tècnics veuen totes les veles/models Niviuk internament; només poden editar les seves sessions en draft. Admins tot.
+### Fase 4 — Simulació AoI + simetria
+- Diagrama SVG per grup de línies, coloració per desviació, banda de tolerància ajustable.
+- Toggle Symmetry (relatiu a la mediana).
+- Modes de referència: main-line / row / point.
+- Simulació interactiva de loops amb reset i marques (installed / candidate).
 
-## Fase 1 — Fonaments (aquest entregable)
+### Fase 5 — Finish flow + comparativa + re-measure
+- Finish dialog (comment, anonymous, 3 sí/no) que escriu `session_loop_changes` + opcionalment sincronitza `wing_loop_state`.
+- Re-measure parcial: nova sessió amb `previous_session_id`, copiant les línies no re-mesurades.
+- Result page (AoI/symmetry, breadcrumb per wing history).
+- Comparativa antic vs. nou (recorre la cadena `previous_session_id`), export PDF/XLSX, share link.
+- Taula raw nominal vs measured al peu.
 
-1. Disseny visual Niviuk (paleta blau/blanc neta, tipografia tècnica, no els mountains de we-measure).
-2. Auth email/password + Google (ruta pública `/auth`, layout `_authenticated` gestionat).
-3. Home autenticada amb navegació: Tauler, Models, Mesures, Nova mesura, Manual, FAQ.
-4. Landing pública `/` amb intro Niviuk + botó Entra.
-5. Esquema DB complet + RLS + trigger crear profile.
-6. Pàgina **Models de vela**: llista + crea/edita model + gestor de línies (A1..BR6 amb longitud fàbrica).
-7. Importador CSV per un model (format: `label,factory_length_mm,tolerance_mm`).
-8. Ruta `/models/$id` amb graella de línies estil we-measure (targetes AR1/AR2/BR1... amb valors de fàbrica).
+### Fase 6 — Wing/Model admin
+- Wing detail: safety_notice, hores/dates read-once, editor Loops fora de sessió.
+- Model admin: brake_measurement_supported, safety_notice editable.
+- Checksum de serial + producció + badge "not validated".
 
-## Fase 2 — Mesura i comparació
+### Fase 7 — Contingut i comunitat
+- Rutes estàtiques: Vision, Manual (accordion), FAQ.
+- Account settings: laser offset, preferred order, default tolerance.
+- Public feed anonimitzat de sessions publicades.
 
-9. CRUD veles (número de sèrie associat a model).
-10. Nova sessió de mesura: replicar la graella de la vela, cada línia amb input numèric.
-11. Càlcul en viu de desviació (mm i %) vs fàbrica, semàfor de color segons tolerància.
-12. Resum de sessió: mitjana desviació per grup (A/B/C/BR), gràfic de desviacions.
-13. Guardar draft / marcar completa.
+## Detalls tècnics (referència)
 
-## Fase 3 — Protocols i compartició
+- **Migració Fase 1**: una única sentència SQL amb tots els CREATE/ALTER + GRANT + RLS. Els enums nous es creen amb `CREATE TYPE ... AS ENUM`. `serial_checksum_valid` es calcula amb un trigger `BEFORE INSERT/UPDATE` sobre `wings`.
+- **Loop suggestion engine** (ja existent a Fase 0): es preserva; només s'estén perquè `wing_loop_state` alimenti l'estat "installed" per defecte.
+- **Fórmula plausibilitat**: `diff_N = (reading_N - nominal_N) - (reading_ref - nominal_ref)`; `flagged = |diff_N| > 4 × tolerance_effectiva`.
+- **AoI**: per grup, es projecta cada punt sobre un eix normalitzat i es dibuixa el desplaçament horitzontal proporcional a `deviation_mm`.
+- **Export**: `jspdf` + `jspdf-autotable` per PDF, `xlsx` (SheetJS) per Excel — tot client-side.
+- **Web Bluetooth**: `navigator.bluetooth.requestDevice({ filters: [{ services: [<uuid>] }] })` amb driver Leica; feature-detect `if (!('bluetooth' in navigator))` desactiva la UI.
+- **Estat read-once**: el server rebutja updates a camps ja poblats (validat a `wings.functions.ts`).
 
-14. Vista pública `/share/result/$token` (només lectura, sense login).
-15. Export PDF del protocol.
-16. Comparació pre/post (dues sessions de la mateixa vela una al costat de l'altra).
-17. Històric de la vela: evolució de mesures en el temps.
+## Riscos / notes
 
-## Fase 4 — Opcional més endavant
+- És molta feina. Cada fase és un torn (o més). Si em toca fer-ho tot d'una tirada sense poder validar entremig, algun detall d'UX quedarà a mig polir i el tornarem a tocar.
+- Bluetooth requereix maquinari real per validar; el codi quedarà preparat però no puc testejar end-to-end sense un DISTO davant.
+- Les vistes AoI/symmetry són el bloc més subjectiu; probablement les iterem visualment un cop les vegis.
 
-- Integració làser Bluetooth (Web Bluetooth API).
-- Simulació de trimming.
-- Comparació entre veles públiques de la comunitat.
-
----
-
-**En aquesta iteració construeixo la Fase 1 sencera.** Un cop la validis passem a la Fase 2. Vols que arrenqui?
+Començo ara mateix amb la Fase 1 (migració d'esquema). Un cop l'aprovis i s'apliqui, seguiré amb Fase 2 al torn següent, i així fins al final.
