@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AuthenticatedWingsRouteImport } from './routes/_authenticated/wings'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
@@ -51,6 +52,11 @@ const AuthenticatedWingsRoute = AuthenticatedWingsRouteImport.update({
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/materials': typeof AuthenticatedMaterialsRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/materials': typeof AuthenticatedMaterialsRoute
   '/models': typeof AuthenticatedModelsRouteWithChildren
   '/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
   '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
   '/_authenticated/sessions': typeof AuthenticatedSessionsRouteWithChildren
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/materials'
     | '/models'
     | '/sessions'
+    | '/settings'
     | '/users'
     | '/wings'
     | '/share/$token'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/materials'
     | '/models'
     | '/sessions'
+    | '/settings'
     | '/users'
     | '/wings'
     | '/share/$token'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/_authenticated/materials'
     | '/_authenticated/models'
     | '/_authenticated/sessions'
+    | '/_authenticated/settings'
     | '/_authenticated/users'
     | '/_authenticated/wings'
     | '/share/$token'
@@ -239,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sessions': {
@@ -341,6 +360,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaterialsRoute: typeof AuthenticatedMaterialsRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRouteWithChildren
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedWingsRoute: typeof AuthenticatedWingsRouteWithChildren
 }
@@ -351,6 +371,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaterialsRoute: AuthenticatedMaterialsRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRouteWithChildren,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedWingsRoute: AuthenticatedWingsRouteWithChildren,
 }

@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { getSession, upsertMeasurement, updateSession, deleteSession } from "@/lib/sessions.functions";
+import { importMeasurementsXlsx } from "@/lib/session-extras.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -31,6 +32,7 @@ type LineSpec = {
   material_id: string | null;
 };
 type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
+type MeasurementFull = Measurement & { flagged?: boolean | null; flag_reason?: string | null };
 type Material = { id: string; name: string; diameter_mm: number | string | null };
 type LoopType = { id: string; name: string; description: string | null; sort_order: number };
 type Shortening = { material_id: string; loop_type_id: string; shortening_mm: number | string };
@@ -64,6 +66,9 @@ function SessionDetail() {
   const materials = (data as { materials?: Material[] }).materials ?? [];
   const loopTypes = (data as { loopTypes?: LoopType[] }).loopTypes ?? [];
   const shortenings = (data as { shortenings?: Shortening[] }).shortenings ?? [];
+  const flaggedByLine = new Map(
+    (measurements as MeasurementFull[]).map((m) => [m.line_spec_id, { flagged: Boolean(m.flagged), reason: m.flag_reason ?? "" }]),
+  );
   const materialById = new Map(materials.map((m) => [m.id, m]));
   const loopById = new Map(loopTypes.map((l) => [l.id, l]));
   // material_id -> [{ loop, shortening }]
@@ -124,6 +129,45 @@ function SessionDetail() {
   });
 
   const [notes, setNotes] = useState(session.notes ?? "");
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  async function handleImportFile(file: File) {
+    setImporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rowsAny = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const rows: { label: string; measured_mm: number }[] = [];
+      for (const r of rowsAny) {
+        const keys = Object.keys(r);
+        const labelKey = keys.find((k) => /label|line|name/i.test(k)) ?? keys[0];
+        const valueKey = keys.find((k) => /mm|measured|length|value/i.test(k)) ?? keys[1];
+        const label = String(r[labelKey] ?? "").trim();
+        const value = Number(r[valueKey]);
+        if (!label || !Number.isFinite(value) || value <= 0) continue;
+        rows.push({ label, measured_mm: value });
+      }
+      if (rows.length === 0) {
+        toast.error("No usable rows. Expected two columns: label and measured mm.");
+        return;
+      }
+      const res = await importMeasurementsXlsx({ data: { session_id: id, rows } });
+      qc.invalidateQueries({ queryKey: ["session", id] });
+      const skipped = res.skipped.length;
+      toast.success(
+        `Imported ${res.imported} of ${rows.length}${skipped ? ` · ${skipped} skipped (unknown labels)` : ""}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
   const notesMut = useMutation({
     mutationFn: () => updateSession({ data: { id, notes } }),
     onSuccess: () => {
@@ -214,6 +258,28 @@ function SessionDetail() {
             <Button variant="outline" size="sm" asChild>
               <Link to="/sessions"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
             </Button>
+            {!readOnly && (
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleImportFile(f);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={importing}
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" /> {importing ? "Importing…" : "Import XLSX"}
+                </Button>
+              </>
+            )}
             {session.status === "draft" && (
               <Button size="sm" onClick={() => statusMut.mutate("complete")} disabled={statusMut.isPending || measuredCount === 0}>
                 <CheckCircle2 className="h-4 w-4 mr-2" />Mark complete
@@ -309,7 +375,17 @@ function SessionDetail() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-semibold text-primary">{r.line.label}</span>
-                      <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
+                      <div className="flex items-center gap-1">
+                        {flaggedByLine.get(r.line.id)?.flagged && (
+                          <span
+                            title={flaggedByLine.get(r.line.id)?.reason ?? "Implausible reading"}
+                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400"
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                          </span>
+                        )}
+                        <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
+                      </div>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                       factory {r.factory.toFixed(0)} ± {r.tol.toFixed(1)}

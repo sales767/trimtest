@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { listSessions, listAllSessions, startMeasurement } from "@/lib/sessions.functions";
 import { isCurrentUserAdmin } from "@/lib/admin.functions";
 import { listModels } from "@/lib/models.functions";
+import { getMyProfile } from "@/lib/profile.functions";
 import { PageHeader } from "./route";
 import { ArrowRight, Download, Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ const meAdminQuery = queryOptions({ queryKey: ["is-admin"], queryFn: () => isCur
 const mySessionsQuery = queryOptions({ queryKey: ["sessions"], queryFn: () => listSessions() });
 const allSessionsQuery = queryOptions({ queryKey: ["all-sessions"], queryFn: () => listAllSessions() });
 const modelsQuery = queryOptions({ queryKey: ["models"], queryFn: () => listModels() });
+const meProfileQuery = queryOptions({ queryKey: ["my-profile"], queryFn: () => getMyProfile() });
 
 export const Route = createFileRoute("/_authenticated/sessions")({
   component: SessionsPage,
@@ -25,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/sessions")({
     const me = await context.queryClient.ensureQueryData(meAdminQuery);
     await Promise.all([
       context.queryClient.ensureQueryData(modelsQuery),
+      context.queryClient.ensureQueryData(meProfileQuery),
       me.isAdmin
         ? context.queryClient.ensureQueryData(allSessionsQuery)
         : context.queryClient.ensureQueryData(mySessionsQuery),
@@ -47,6 +50,7 @@ function SessionsPage() {
   const { data: me } = useSuspenseQuery(meAdminQuery);
   const isAdmin = Boolean(me.isAdmin);
   const { data: models } = useSuspenseQuery(modelsQuery);
+  const { data: profile } = useSuspenseQuery(meProfileQuery);
   const activeQuery = (isAdmin ? allSessionsQuery : mySessionsQuery) as typeof allSessionsQuery;
   const { data: rowsData } = useSuspenseQuery(activeQuery);
   const rows = (rowsData ?? []) as unknown as (AdminRow | MineRow)[];
@@ -55,7 +59,25 @@ function SessionsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ model_id: "", serial_number: "", notes: "" });
+  const [form, setForm] = useState<{
+    model_id: string;
+    serial_number: string;
+    notes: string;
+    measurement_order: "rows" | "columns" | "sections";
+    includes_brakes: boolean;
+    tolerance_override_mm: string;
+    offset_mm: string;
+    publish_anonymously: boolean;
+  }>({
+    model_id: "",
+    serial_number: "",
+    notes: "",
+    measurement_order: (profile.preferred_measurement_order ?? "rows") as "rows" | "columns" | "sections",
+    includes_brakes: false,
+    tolerance_override_mm: "",
+    offset_mm: profile.laser_offset_mm ? String(profile.laser_offset_mm) : "",
+    publish_anonymously: false,
+  });
 
   const start = useMutation({
     mutationFn: () =>
@@ -64,6 +86,11 @@ function SessionsPage() {
           model_id: form.model_id,
           serial_number: form.serial_number,
           notes: form.notes || undefined,
+          measurement_order: form.measurement_order,
+          includes_brakes: form.includes_brakes,
+          tolerance_override_mm: form.tolerance_override_mm.trim() ? Number(form.tolerance_override_mm) : null,
+          offset_mm: form.offset_mm.trim() ? Number(form.offset_mm) : null,
+          publish_anonymously: form.publish_anonymously,
         },
       }),
     onSuccess: (row) => {
@@ -71,7 +98,7 @@ function SessionsPage() {
       qc.invalidateQueries({ queryKey: ["all-sessions"] });
       qc.invalidateQueries({ queryKey: ["wings"] });
       setOpen(false);
-      setForm({ model_id: "", serial_number: "", notes: "" });
+      setForm((f) => ({ ...f, model_id: "", serial_number: "", notes: "" }));
       navigate({ to: "/sessions/$id", params: { id: (row as { session_id: string }).session_id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -222,6 +249,60 @@ function SessionsPage() {
                   <div>
                     <Label>Notes (optional)</Label>
                     <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Measurement order</Label>
+                      <Select
+                        value={form.measurement_order}
+                        onValueChange={(v) => setForm({ ...form, measurement_order: v as "rows" | "columns" | "sections" })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rows">Rows</SelectItem>
+                          <SelectItem value="columns">Columns</SelectItem>
+                          <SelectItem value="sections">Sections</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Laser offset (mm)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.offset_mm}
+                        onChange={(e) => setForm({ ...form, offset_mm: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Tolerance override (mm)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.tolerance_override_mm}
+                        onChange={(e) => setForm({ ...form, tolerance_override_mm: e.target.value })}
+                        placeholder="use line spec"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 pt-6">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.includes_brakes}
+                          onChange={(e) => setForm({ ...form, includes_brakes: e.target.checked })}
+                        />
+                        Include brakes
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.publish_anonymously}
+                          onChange={(e) => setForm({ ...form, publish_anonymously: e.target.checked })}
+                        />
+                        Publish anonymously
+                      </label>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="submit" disabled={start.isPending || !form.model_id || !form.serial_number.trim()}>

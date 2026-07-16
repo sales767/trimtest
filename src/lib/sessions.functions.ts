@@ -78,6 +78,13 @@ export const startMeasurement = createServerFn({ method: "POST" })
       model_id: z.string().uuid(),
       serial_number: z.string().min(1).max(80).transform((s) => s.trim()),
       notes: z.string().max(2000).optional(),
+      measurement_order: z.enum(["rows", "columns", "sections"]).optional(),
+      includes_brakes: z.boolean().optional(),
+      tolerance_override_mm: z.number().min(0).max(500).nullable().optional(),
+      offset_mm: z.number().min(-500).max(500).nullable().optional(),
+      comment: z.string().max(2000).optional(),
+      publish_anonymously: z.boolean().optional(),
+      previous_session_id: z.string().uuid().nullable().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -101,7 +108,18 @@ export const startMeasurement = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await context.supabase
       .from("measurement_sessions")
-      .insert({ wing_id: wingId, technician_id: context.userId, notes: data.notes ?? null })
+      .insert({
+        wing_id: wingId,
+        technician_id: context.userId,
+        notes: data.notes ?? null,
+        measurement_order: data.measurement_order,
+        includes_brakes: data.includes_brakes,
+        tolerance_override_mm: data.tolerance_override_mm ?? null,
+        offset_mm: data.offset_mm ?? null,
+        comment: data.comment ?? null,
+        publish_anonymously: data.publish_anonymously,
+        previous_session_id: data.previous_session_id ?? null,
+      })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -114,23 +132,28 @@ export const getSession = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: session, error } = await context.supabase
       .from("measurement_sessions")
-      .select("*, wing:wings(id, serial_number, owner_note, model:wing_models(id, brand, name, size, cells))")
+      .select(
+        "*, wing:wings(id, serial_number, owner_note, model:wing_models(id, brand, name, size, cells, safety_notice, brake_measurement_supported))",
+      )
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!session) throw new Error("Session not found");
     const modelId = (session.wing as { model: { id: string } }).model.id;
-    const [linesRes, measRes, matsRes, loopsRes, shortRes] = await Promise.all([
+    const wingId = (session.wing as { id: string }).id;
+    const [linesRes, measRes, matsRes, loopsRes, shortRes, wlsRes] = await Promise.all([
       context.supabase.from("line_specs").select("*").eq("model_id", modelId).order("line_group").order("sort_order").order("label"),
       context.supabase.from("measurements").select("*").eq("session_id", data.id),
       context.supabase.from("line_materials").select("id, name, diameter_mm").order("name"),
       context.supabase.from("loop_types").select("id, name, description, sort_order").order("sort_order").order("name"),
       context.supabase.from("loop_shortenings").select("material_id, loop_type_id, shortening_mm"),
+      context.supabase.from("wing_loop_state").select("line_spec_id, loop_type_id").eq("wing_id", wingId),
     ]);
     if (linesRes.error) throw new Error(linesRes.error.message);
     if (measRes.error) throw new Error(measRes.error.message);
     if (matsRes.error) throw new Error(matsRes.error.message);
     if (loopsRes.error) throw new Error(loopsRes.error.message);
     if (shortRes.error) throw new Error(shortRes.error.message);
+    if (wlsRes.error) throw new Error(wlsRes.error.message);
     return {
       session,
       lines: linesRes.data ?? [],
@@ -138,6 +161,7 @@ export const getSession = createServerFn({ method: "GET" })
       materials: matsRes.data ?? [],
       loopTypes: loopsRes.data ?? [],
       shortenings: shortRes.data ?? [],
+      wingLoopState: wlsRes.data ?? [],
     };
   });
 
@@ -151,10 +175,42 @@ export const upsertMeasurement = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    // Compute plausibility flag: |deviation| > 4 * effective tolerance
+    const [{ data: spec, error: sre }, { data: sess, error: sse }] = await Promise.all([
+      context.supabase
+        .from("line_specs")
+        .select("factory_length_mm, tolerance_mm")
+        .eq("id", data.line_spec_id)
+        .maybeSingle(),
+      context.supabase
+        .from("measurement_sessions")
+        .select("tolerance_override_mm, offset_mm")
+        .eq("id", data.session_id)
+        .maybeSingle(),
+    ]);
+    if (sre) throw new Error(sre.message);
+    if (sse) throw new Error(sse.message);
+    const factory = Number(spec?.factory_length_mm ?? 0);
+    const specTol = Number(spec?.tolerance_mm ?? 10);
+    const override = sess?.tolerance_override_mm != null ? Number(sess.tolerance_override_mm) : null;
+    const offset = sess?.offset_mm != null ? Number(sess.offset_mm) : 0;
+    const effTol = override ?? specTol;
+    const adjusted = data.measured_mm - offset;
+    const dev = adjusted - factory;
+    const flagged = Math.abs(dev) > 4 * effTol;
+    const flag_reason = flagged
+      ? `|deviation| ${dev.toFixed(1)}mm exceeds 4×tolerance (${(4 * effTol).toFixed(1)}mm)`
+      : null;
     const { data: row, error } = await context.supabase
       .from("measurements")
       .upsert(
-        { session_id: data.session_id, line_spec_id: data.line_spec_id, measured_mm: data.measured_mm },
+        {
+          session_id: data.session_id,
+          line_spec_id: data.line_spec_id,
+          measured_mm: data.measured_mm,
+          flagged,
+          flag_reason,
+        },
         { onConflict: "session_id,line_spec_id" },
       )
       .select().single();

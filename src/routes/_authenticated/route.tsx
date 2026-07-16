@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Gauge, LayoutDashboard, Layers, ClipboardList, Users, LogOut, Plus, Cable } from "lucide-react";
+import { Gauge, LayoutDashboard, Layers, ClipboardList, Users, LogOut, Plus, Cable, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { isCurrentUserAdmin } from "@/lib/admin.functions";
@@ -22,6 +22,7 @@ const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/models", label: "Wing models", icon: Layers },
   { to: "/sessions", label: "Measurements", icon: ClipboardList },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 const adminNav = [
