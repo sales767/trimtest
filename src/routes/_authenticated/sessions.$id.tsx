@@ -1,18 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { getSession, upsertMeasurement, updateSession, deleteSession } from "@/lib/sessions.functions";
-import { importMeasurementsXlsx } from "@/lib/session-extras.functions";
+import { importMeasurementsXlsx, createRemeasureSession } from "@/lib/session-extras.functions";
 import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair, History, Repeat2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { AoIDiagram, EstimatesDisclaimer } from "@/components/aoi-diagram";
 import { exportProtocolPdf, exportProtocolXlsx } from "@/lib/session-export";
 import { isLaserSupported, isLaserConnected, connectLaser, disconnectLaser, readNextDistanceMm } from "@/lib/leica-disto";
+import { FinishSessionDialog } from "@/components/finish-session-dialog";
+import { ReviewFlagsDialog } from "@/components/review-flags-dialog";
+import { LoopSimulator } from "@/components/loop-simulator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const sessionQuery = (id: string) =>
   queryOptions({ queryKey: ["session", id], queryFn: () => getSession({ data: { id } }) });
@@ -33,12 +38,15 @@ type LineSpec = {
   factory_length_mm: number | string;
   tolerance_mm: number | string;
   material_id: string | null;
+  row_index?: number | null;
+  point_index?: number | null;
 };
 type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
 type MeasurementFull = Measurement & { flagged?: boolean | null; flag_reason?: string | null };
 type Material = { id: string; name: string; diameter_mm: number | string | null };
 type LoopType = { id: string; name: string; description: string | null; sort_order: number };
 type Shortening = { material_id: string; loop_type_id: string; shortening_mm: number | string };
+type WingLoop = { line_spec_id: string; loop_type_id: string | null };
 
 function classify(dev: number, tol: number): "ok" | "warn" | "bad" {
   const a = Math.abs(dev);
