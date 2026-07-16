@@ -20,7 +20,6 @@ import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
 import { Route as AuthenticatedDatabaseRouteImport } from './routes/_authenticated/database'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as ApiPublicSeedTestUsersRouteImport } from './routes/api/public/seed-test-users'
 import { Route as AuthenticatedWingsIdRouteImport } from './routes/_authenticated/wings.$id'
 import { Route as AuthenticatedSessionsIdRouteImport } from './routes/_authenticated/sessions.$id'
 import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
@@ -79,11 +78,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicSeedTestUsersRoute = ApiPublicSeedTestUsersRouteImport.update({
-  id: '/api/public/seed-test-users',
-  path: '/api/public/seed-test-users',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedWingsIdRoute = AuthenticatedWingsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -114,7 +108,6 @@ export interface FileRoutesByFullPath {
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
   '/wings/$id': typeof AuthenticatedWingsIdRoute
-  '/api/public/seed-test-users': typeof ApiPublicSeedTestUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,7 +123,6 @@ export interface FileRoutesByTo {
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
   '/wings/$id': typeof AuthenticatedWingsIdRoute
-  '/api/public/seed-test-users': typeof ApiPublicSeedTestUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,7 +140,6 @@ export interface FileRoutesById {
   '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
   '/_authenticated/sessions/$id': typeof AuthenticatedSessionsIdRoute
   '/_authenticated/wings/$id': typeof AuthenticatedWingsIdRoute
-  '/api/public/seed-test-users': typeof ApiPublicSeedTestUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,7 +157,6 @@ export interface FileRouteTypes {
     | '/models/$id'
     | '/sessions/$id'
     | '/wings/$id'
-    | '/api/public/seed-test-users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -182,7 +172,6 @@ export interface FileRouteTypes {
     | '/models/$id'
     | '/sessions/$id'
     | '/wings/$id'
-    | '/api/public/seed-test-users'
   id:
     | '__root__'
     | '/'
@@ -199,7 +188,6 @@ export interface FileRouteTypes {
     | '/_authenticated/models/$id'
     | '/_authenticated/sessions/$id'
     | '/_authenticated/wings/$id'
-    | '/api/public/seed-test-users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -207,7 +195,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ShareTokenRoute: typeof ShareTokenRoute
-  ApiPublicSeedTestUsersRoute: typeof ApiPublicSeedTestUsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -288,13 +275,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/api/public/seed-test-users': {
-      id: '/api/public/seed-test-users'
-      path: '/api/public/seed-test-users'
-      fullPath: '/api/public/seed-test-users'
-      preLoaderRoute: typeof ApiPublicSeedTestUsersRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wings/$id': {
       id: '/_authenticated/wings/$id'
@@ -383,7 +363,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ShareTokenRoute: ShareTokenRoute,
-  ApiPublicSeedTestUsersRoute: ApiPublicSeedTestUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
