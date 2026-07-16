@@ -71,6 +71,23 @@ const finishInput = z.object({
       }),
     )
     .default([]),
+  cascades: z
+    .array(
+      z.object({
+        line_group: z.enum(["A", "B", "C", "D", "BR", "STAB"]),
+        description: z.string().min(1).max(2000),
+      }),
+    )
+    .default([]),
+  inserts: z
+    .array(
+      z.object({
+        line_spec_id: z.string().uuid().nullable().optional(),
+        description: z.string().min(1).max(2000),
+        length_change_mm: z.number().min(-500).max(500),
+      }),
+    )
+    .default([]),
   sync_wing_loop_state: z.boolean().default(false),
   publish: z.boolean().default(false),
 });
@@ -122,6 +139,39 @@ export const finishSession = createServerFn({ method: "POST" })
           .from("wing_loop_state")
           .upsert(state, { onConflict: "wing_id,line_spec_id" });
         if (error) throw new Error(error.message);
+      }
+    }
+
+    // 2b) Cascade descriptions + insert records (replace all for the session)
+    {
+      const { error: dc } = await context.supabase
+        .from("cascade_loop_changes")
+        .delete()
+        .eq("session_id", data.session_id);
+      if (dc) throw new Error(dc.message);
+      if (data.cascades.length > 0) {
+        const rows = data.cascades.map((c) => ({
+          session_id: data.session_id,
+          line_group: c.line_group,
+          description: c.description,
+        }));
+        const { error: ic } = await context.supabase.from("cascade_loop_changes").insert(rows);
+        if (ic) throw new Error(ic.message);
+      }
+      const { error: di } = await context.supabase
+        .from("line_inserts")
+        .delete()
+        .eq("session_id", data.session_id);
+      if (di) throw new Error(di.message);
+      if (data.inserts.length > 0) {
+        const rows = data.inserts.map((r) => ({
+          session_id: data.session_id,
+          line_spec_id: r.line_spec_id ?? null,
+          description: r.description,
+          length_change_mm: r.length_change_mm,
+        }));
+        const { error: ii } = await context.supabase.from("line_inserts").insert(rows);
+        if (ii) throw new Error(ii.message);
       }
     }
 
