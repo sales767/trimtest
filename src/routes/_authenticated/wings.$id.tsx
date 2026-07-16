@@ -271,6 +271,18 @@ function WingDetail() {
   );
 }
 
+function MetaField({ label, locked, children }: { label: string; locked?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="flex items-center gap-1">
+        {label}
+        {locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
 function Compare({ aId, bId }: { aId: string; bId: string }) {
   const results = useQueries({
     queries: [
