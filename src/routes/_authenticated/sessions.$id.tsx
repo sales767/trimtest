@@ -6,7 +6,7 @@ import { PageHeader } from "./route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, AlertTriangle, FileSpreadsheet, Radio, Crosshair, History, Repeat2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Share2, Copy, Printer, ExternalLink, Upload, FileSpreadsheet, Radio, History, Repeat2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -57,19 +57,6 @@ function classify(dev: number, tol: number): "ok" | "warn" | "bad" {
   if (a <= tol * 2) return "warn";
   return "bad";
 }
-
-const CLASS_STYLE: Record<string, string> = {
-  ok: "border-emerald-500/40 bg-emerald-500/5",
-  warn: "border-amber-500/50 bg-amber-500/5",
-  bad: "border-red-500/50 bg-red-500/5",
-  empty: "border-border bg-card",
-};
-const DOT_STYLE: Record<string, string> = {
-  ok: "bg-emerald-500",
-  warn: "bg-amber-500",
-  bad: "bg-red-500",
-  empty: "bg-muted-foreground/30",
-};
 
 function SessionDetail() {
   const { id } = Route.useParams();
