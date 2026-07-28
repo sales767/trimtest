@@ -13,7 +13,7 @@ import { toast } from "sonner";
 const wingQuery = (id: string) =>
   queryOptions({ queryKey: ["wing", id], queryFn: () => getWing({ data: { id } }) });
 
-export const Route = createFileRoute("/_authenticated/wings/$id")({
+export const Route = createFileRoute("/_authenticated/wings/$id/")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(wingQuery(params.id)),
   component: WingDetail,
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,

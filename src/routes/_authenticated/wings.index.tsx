@@ -17,7 +17,7 @@ import { toast } from "sonner";
 const wingsQuery = queryOptions({ queryKey: ["wings"], queryFn: () => listWings() });
 const modelsForNew = queryOptions({ queryKey: ["models"], queryFn: () => listModels() });
 
-export const Route = createFileRoute("/_authenticated/wings")({
+export const Route = createFileRoute("/_authenticated/wings/")({
   component: WingsPage,
   loader: ({ context }) =>
     Promise.all([
