@@ -16,6 +16,8 @@ import { isLaserSupported, isLaserConnected, connectLaser, disconnectLaser, read
 import { FinishSessionDialog } from "@/components/finish-session-dialog";
 import { ReviewFlagsDialog } from "@/components/review-flags-dialog";
 import { LoopSimulator } from "@/components/loop-simulator";
+import { MeasureTemplate, type TemplateRow } from "@/components/measure-template";
+import { GenerateTemplateDialog } from "@/components/generate-template-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -40,6 +42,7 @@ type LineSpec = {
   material_id: string | null;
   row_index?: number | null;
   point_index?: number | null;
+  side?: "left" | "right" | "center" | null;
 };
 type Measurement = { line_spec_id: string; measured_mm: number | string; deviation_mm: number | string | null };
 type MeasurementFull = Measurement & { flagged?: boolean | null; flag_reason?: string | null };
@@ -155,6 +158,7 @@ function SessionDetail() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [remeasureOpen, setRemeasureOpen] = useState(false);
   const [remeasureSelected, setRemeasureSelected] = useState<Record<string, boolean>>({});
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   const remeasureMut = useMutation({
     mutationFn: () =>
@@ -295,6 +299,29 @@ function SessionDetail() {
 
   const grouped = GROUPS.map((g) => ({ group: g, items: rows.filter((r) => r.line.line_group === g) }))
     .filter((g) => g.items.length > 0);
+
+  // Rows shaped for the on-screen measuring template (left/right sheet).
+  const templateRows: TemplateRow[] = GROUPS.flatMap((g) =>
+    rows
+      .filter((r) => r.line.line_group === g)
+      .map((r) => ({
+        id: r.line.id,
+        label: r.line.label,
+        line_group: r.line.line_group,
+        side: (r.line.side ?? null) as TemplateRow["side"],
+        point_index: r.line.point_index ?? null,
+        factory: r.factory,
+        tol: r.tol,
+        value: r.value,
+        dev: r.dev,
+        cls: r.cls as TemplateRow["cls"],
+        flagged: Boolean(flaggedByLine.get(r.line.id)?.flagged),
+        flagReason: flaggedByLine.get(r.line.id)?.reason,
+        suggestion: r.suggestion
+          ? { name: r.suggestion.loop.name, shortening: r.suggestion.shortening, residual: r.suggestion.residual }
+          : null,
+      })),
+  );
 
   // Summary per group + overall
   const measured = rows.filter((r) => r.dev !== null);
@@ -532,121 +559,27 @@ function SessionDetail() {
         {/* Measurement grid */}
         {grouped.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
-            <p className="text-muted-foreground">This model has no linemap yet.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add lines to <Link to="/models/$id" params={{ id: wing.model.id }} className="underline">the model</Link> first.
+            <p className="text-muted-foreground">This model has no measuring template yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Generate a standard left/right sheet now, or build the linemap on{" "}
+              <Link to="/models/$id" params={{ id: wing.model.id }} className="underline">the model page</Link>.
             </p>
+            <Button className="mt-4" onClick={() => setTemplateOpen(true)}>
+              Generate measuring template
+            </Button>
           </div>
         ) : (
-          grouped.map((g) => (
-            <section key={g.group}>
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                Group {g.group}
-              </h2>
-              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {g.items.map((r) => (
-                  <div
-                    key={r.line.id}
-                    id={`line-${r.line.id}`}
-                    className={`rounded-md border p-3 transition-colors ${CLASS_STYLE[r.cls]}`}
-                    style={{ boxShadow: "var(--shadow-panel)" }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-semibold text-primary">{r.line.label}</span>
-                      <div className="flex items-center gap-1">
-                        {flaggedByLine.get(r.line.id)?.flagged && (
-                          <span
-                            title={flaggedByLine.get(r.line.id)?.reason ?? "Implausible reading"}
-                            className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400"
-                          >
-                            <AlertTriangle className="h-3 w-3" />
-                          </span>
-                        )}
-                        <span className={`h-2 w-2 rounded-full ${DOT_STYLE[r.cls]}`} />
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1 font-mono">
-                      factory {r.factory.toFixed(0)} ± {r.tol.toFixed(1)}
-                    </div>
-                    <Input
-                      inputMode="decimal"
-                      type="number"
-                      step="0.1"
-                      readOnly={readOnly}
-                      value={r.value}
-                      onChange={(e) => onChange(r.line.id, e.target.value)}
-                      placeholder="mm"
-                      className="mt-2 font-mono text-lg tabular-nums h-9"
-                    />
-                    {!readOnly && laserOn && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-1 h-7 w-full text-[10px]"
-                        disabled={laserBusy === r.line.id}
-                        onClick={() => readLaserFor(r.line.id, r.tol)}
-                      >
-                        <Crosshair className="h-3 w-3 mr-1" />
-                        {laserBusy === r.line.id ? "Waiting…" : "Read laser"}
-                      </Button>
-                    )}
-                    <div className="mt-1 font-mono text-xs tabular-nums h-4">
-                      {r.dev === null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <span
-                          className={
-                            r.cls === "ok"
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : r.cls === "warn"
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {r.dev >= 0 ? "+" : ""}{r.dev.toFixed(1)} mm
-                          <span className="text-muted-foreground ml-1">
-                            ({((r.dev / r.factory) * 100).toFixed(2)}%)
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 border-t border-border/60 pt-2 min-h-[46px]">
-                      {r.dev === null || r.cls === "ok" ? (
-                        <div className="text-[10px] text-muted-foreground">
-                          {r.material ? r.material.name : "no material"}
-                          {r.cls === "ok" && r.dev !== null ? " · within tolerance" : ""}
-                        </div>
-                      ) : !r.line.material_id ? (
-                        <div className="text-[10px] text-amber-600 dark:text-amber-400">
-                          Set line material to get loop suggestion
-                        </div>
-                      ) : !r.suggestion ? (
-                        <div className="text-[10px] text-muted-foreground">
-                          No loops mapped for {r.material?.name ?? "material"}
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Suggested loop</div>
-                          <div className="font-mono text-sm font-semibold">
-                            {r.suggestion.loop.name}
-                            <span className="text-muted-foreground font-normal ml-1">
-                              (−{r.suggestion.shortening.toFixed(1)} mm)
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground font-mono">
-                            residual {r.suggestion.residual >= 0 ? "+" : ""}{r.suggestion.residual.toFixed(1)} mm
-                            {r.alternates.length > 0 && (
-                              <> · alt: {r.alternates.map((a) => a.loop.name).join(", ")}</>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))
+          <MeasureTemplate
+            rows={templateRows}
+            readOnly={readOnly}
+            laserOn={laserOn}
+            laserBusy={laserBusy}
+            onChange={onChange}
+            onReadLaser={(lineId) => {
+              const row = rows.find((r) => r.line.id === lineId);
+              readLaserFor(lineId, row?.tol ?? 10);
+            }}
+          />
         )}
 
         {/* Notes */}
@@ -731,6 +664,13 @@ function SessionDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GenerateTemplateDialog
+        modelId={wing.model.id}
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        onDone={() => qc.invalidateQueries({ queryKey: ["session", id] })}
+      />
     </div>
   );
 }

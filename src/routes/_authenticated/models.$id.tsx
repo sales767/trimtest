@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Upload, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { GenerateTemplateDialog } from "@/components/generate-template-dialog";
 
 const modelQuery = (id: string) =>
   queryOptions({ queryKey: ["model", id], queryFn: () => getModel({ data: { id } }) });
@@ -63,6 +64,7 @@ function ModelDetail() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [line, setLine] = useState<{ line_group: Group; label: string; factory_length_mm: string; tolerance_mm: string; row_index: string; material_id: string }>({
     line_group: "A",
     label: "",
@@ -131,6 +133,9 @@ function ModelDetail() {
           <div className="flex gap-2">
             <Button variant="outline" asChild size="sm">
               <Link to="/models"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
+            </Button>
+            <Button variant="outline" onClick={() => setTemplateOpen(true)}>
+              Generate template
             </Button>
             <Dialog open={importOpen} onOpenChange={setImportOpen}>
               <DialogTrigger asChild>
@@ -244,7 +249,10 @@ function ModelDetail() {
         {grouped.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
             <p className="text-muted-foreground">No line specs yet.</p>
-            <p className="text-sm text-muted-foreground mt-1">Add lines manually or import a CSV to build the linemap.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Generate a standard left/right template, add lines manually, or import a CSV.
+            </p>
+            <Button className="mt-4" onClick={() => setTemplateOpen(true)}>Generate measuring template</Button>
           </div>
         ) : (
           grouped.map((g) => (
@@ -305,6 +313,8 @@ function ModelDetail() {
           ))
         )}
       </div>
+
+      <GenerateTemplateDialog modelId={id} open={templateOpen} onOpenChange={setTemplateOpen} />
     </div>
   );
 }
