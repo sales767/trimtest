@@ -147,6 +147,7 @@ function SessionDetail() {
   const [remeasureOpen, setRemeasureOpen] = useState(false);
   const [remeasureSelected, setRemeasureSelected] = useState<Record<string, boolean>>({});
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
   const remeasureMut = useMutation({
     mutationFn: () =>
