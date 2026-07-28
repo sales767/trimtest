@@ -111,11 +111,13 @@ export function MeasureTemplate({
                   : undefined;
                 const factory = (left ?? right ?? single)?.factory ?? 0;
                 const tol = (left ?? right ?? single)?.tol ?? 10;
+                const pointLabel =
+                  (left ?? right)?.point_index != null ? `${g}${(left ?? right)!.point_index}` : (single?.label ?? `${g}${k}`);
                 return (
                   <div key={`${g}-${k}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2">
                     <Cell row={left ?? single} align="left" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} />
                     <div className="w-28 text-center">
-                      <div className="font-mono text-sm font-semibold">{g}{k}</div>
+                      <div className="font-mono text-sm font-semibold">{pointLabel}</div>
                       <div className="font-mono text-[10px] text-muted-foreground tabular-nums">
                         {factory.toFixed(0)} ± {tol.toFixed(0)}
                       </div>
