@@ -45,6 +45,8 @@ export function MeasureTemplate({
   laserBusy,
   onChange,
   onReadLaser,
+  activeId,
+  onActive,
 }: {
   rows: TemplateRow[];
   readOnly: boolean;
@@ -52,6 +54,8 @@ export function MeasureTemplate({
   laserBusy?: string | null;
   onChange: (lineId: string, raw: string) => void;
   onReadLaser?: (lineId: string) => void;
+  activeId?: string | null;
+  onActive?: (lineId: string) => void;
 }) {
   const inputs = useRef<HTMLInputElement[]>([]);
   inputs.current = [];
@@ -115,14 +119,14 @@ export function MeasureTemplate({
                   (left ?? right)?.point_index != null ? `${g}${(left ?? right)!.point_index}` : (single?.label ?? `${g}${k}`);
                 return (
                   <div key={`${g}-${k}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2">
-                    <Cell row={left ?? single} align="left" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} />
+                    <Cell row={left ?? single} align="left" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
                     <div className="w-28 text-center">
                       <div className="font-mono text-sm font-semibold">{pointLabel}</div>
                       <div className="font-mono text-[10px] text-muted-foreground tabular-nums">
                         {factory.toFixed(0)} ± {tol.toFixed(0)}
                       </div>
                     </div>
-                    <Cell row={right} align="right" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} />
+                    <Cell row={right} align="right" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
                   </div>
                 );
               })}
@@ -144,6 +148,8 @@ function Cell({
   onReadLaser,
   register,
   onKeyDown,
+  activeId,
+  onActive,
 }: {
   row?: TemplateRow;
   align: "left" | "right";
@@ -154,14 +160,22 @@ function Cell({
   onReadLaser?: (lineId: string) => void;
   register: (el: HTMLInputElement | null) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  activeId?: string | null;
+  onActive?: (lineId: string) => void;
 }) {
   if (!row) return <div />;
+  const isActive = activeId === row.id;
   return (
-    <div id={`line-${row.id}`} className={`rounded-md border px-2 py-1.5 ${CELL_TONE[row.cls]}`}>
+    <div
+      id={`line-${row.id}`}
+      onMouseEnter={() => onActive?.(row.id)}
+      className={`rounded-md border px-2 py-1.5 transition-shadow ${CELL_TONE[row.cls]} ${isActive ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+    >
       <div className={`flex items-center gap-2 ${align === "right" ? "flex-row-reverse" : ""}`}>
         <Input
           ref={register}
           onKeyDown={onKeyDown}
+          onFocus={() => onActive?.(row.id)}
           inputMode="decimal"
           type="number"
           step="0.1"
