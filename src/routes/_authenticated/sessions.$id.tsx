@@ -17,6 +17,7 @@ import { FinishSessionDialog } from "@/components/finish-session-dialog";
 import { ReviewFlagsDialog } from "@/components/review-flags-dialog";
 import { LoopSimulator } from "@/components/loop-simulator";
 import { MeasureTemplate, type TemplateRow } from "@/components/measure-template";
+import { WingDiagram } from "@/components/wing-diagram";
 import { GenerateTemplateDialog } from "@/components/generate-template-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -556,17 +557,36 @@ function SessionDetail() {
             </Button>
           </div>
         ) : (
+          <>
+          <WingDiagram
+            rows={templateRows.map((r) => ({
+              id: r.id,
+              label: r.label,
+              line_group: r.line_group,
+              side: r.side,
+              point_index: r.point_index,
+              cls: r.cls,
+            }))}
+            activeId={activeLineId}
+            onSelect={(id) => {
+              setActiveLineId(id);
+              document.getElementById(`line-${id}`)?.querySelector("input")?.focus();
+            }}
+          />
           <MeasureTemplate
             rows={templateRows}
             readOnly={readOnly}
             laserOn={laserOn}
             laserBusy={laserBusy}
             onChange={onChange}
+            activeId={activeLineId}
+            onActive={setActiveLineId}
             onReadLaser={(lineId) => {
               const row = rows.find((r) => r.line.id === lineId);
               readLaserFor(lineId, row?.tol ?? 10);
             }}
           />
+          </>
         )}
 
         {/* Notes */}
