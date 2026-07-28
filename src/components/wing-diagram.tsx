@@ -13,7 +13,7 @@ const DOT_FILL: Record<DiagramRow["cls"], string> = {
   ok: "hsl(142 71% 45%)",
   warn: "hsl(38 92% 50%)",
   bad: "hsl(0 84% 60%)",
-  empty: "hsl(var(--muted-foreground) / 0.35)",
+  empty: "hsl(215 16% 65%)",
 };
 
 const GROUP_ORDER = ["A", "B", "C", "D", "E", "BR", "STAB"];
@@ -101,8 +101,8 @@ export function WingDiagram({
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Paraglider top view with measuring points">
         <defs>
           <linearGradient id="wd-canopy" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary) / 0.20)" />
-            <stop offset="100%" stopColor="hsl(var(--primary) / 0.05)" />
+            <stop offset="0%" stopColor="rgba(37, 99, 235, 0.28)" />
+            <stop offset="100%" stopColor="rgba(37, 99, 235, 0.08)" />
           </linearGradient>
         </defs>
 
@@ -110,7 +110,7 @@ export function WingDiagram({
         <polygon
           points={`${edge(60)} ${edge(268).split(" ").reverse().join(" ")}`}
           fill="url(#wd-canopy)"
-          stroke="hsl(var(--border))"
+          stroke="rgba(100,116,139,0.45)"
           strokeWidth={1.5}
         />
         {/* cell ribs */}
@@ -124,7 +124,7 @@ export function WingDiagram({
               y1={60 + drop(x) + t1}
               x2={x}
               y2={268 + drop(x) - t1}
-              stroke="hsl(var(--border))"
+              stroke="rgba(100,116,139,0.45)"
               strokeWidth={0.6}
               opacity={0.55}
             />
@@ -136,10 +136,10 @@ export function WingDiagram({
           const y = chordTop + gi * step;
           return (
             <g key={g}>
-              <text x={12} y={y + drop(12) + 4} fontSize={11} fontFamily="ui-monospace,monospace" fill="hsl(var(--muted-foreground))">
+              <text x={12} y={y + drop(12) + 4} fontSize={11} fontFamily="ui-monospace,monospace" fill="rgba(100,116,139,0.95)">
                 {groupLabel(g)}
               </text>
-              <text x={W - 12} y={y + drop(W - 12) + 4} fontSize={11} textAnchor="end" fontFamily="ui-monospace,monospace" fill="hsl(var(--muted-foreground))">
+              <text x={W - 12} y={y + drop(W - 12) + 4} fontSize={11} textAnchor="end" fontFamily="ui-monospace,monospace" fill="rgba(100,116,139,0.95)">
                 {groupLabel(g)}
               </text>
             </g>
@@ -147,7 +147,7 @@ export function WingDiagram({
         })}
 
         {/* centre line */}
-        <line x1={cx} y1={48} x2={cx} y2={300} stroke="hsl(var(--border))" strokeDasharray="3 4" />
+        <line x1={cx} y1={48} x2={cx} y2={300} stroke="rgba(100,116,139,0.45)" strokeDasharray="3 4" />
 
         {/* attachment points */}
         {rows.map((r) => {
@@ -162,11 +162,11 @@ export function WingDiagram({
               <title>{r.label}</title>
               {isActive && (
                 <>
-                  <circle cx={x} cy={y} r={16} fill="hsl(var(--primary) / 0.35)">
+                  <circle cx={x} cy={y} r={16} fill="rgba(37,99,235,0.45)">
                     <animate attributeName="r" values="9;20;9" dur="1.1s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.75;0;0.75" dur="1.1s" repeatCount="indefinite" />
                   </circle>
-                  <circle cx={x} cy={y} r={9} fill="none" stroke="hsl(var(--primary))" strokeWidth={2}>
+                  <circle cx={x} cy={y} r={9} fill="none" stroke="rgb(37,99,235)" strokeWidth={2}>
                     <animate attributeName="opacity" values="1;0.25;1" dur="0.7s" repeatCount="indefinite" />
                   </circle>
                 </>
@@ -176,7 +176,7 @@ export function WingDiagram({
                 cy={y}
                 r={isActive ? 5.5 : 4}
                 fill={DOT_FILL[r.cls]}
-                stroke="hsl(var(--card))"
+                stroke="rgba(255,255,255,0.95)"
                 strokeWidth={1}
               />
             </g>
@@ -193,7 +193,7 @@ export function WingDiagram({
               fontSize={12}
               textAnchor="middle"
               fontFamily="ui-monospace,monospace"
-              fill="hsl(var(--primary))"
+              fill="rgb(37,99,235)"
               fontWeight={700}
             >
               {active.label}
