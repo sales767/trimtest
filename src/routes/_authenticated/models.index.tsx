@@ -16,7 +16,7 @@ const modelsQuery = queryOptions({
   queryFn: () => listModels(),
 });
 
-export const Route = createFileRoute("/_authenticated/models")({
+export const Route = createFileRoute("/_authenticated/models/")({
   component: ModelsPage,
   loader: ({ context }) => context.queryClient.ensureQueryData(modelsQuery),
   errorComponent: ({ error }) => <div className="p-8 text-destructive">{error.message}</div>,

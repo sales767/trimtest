@@ -168,3 +168,76 @@ export const bulkImportLines = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { count: inserted?.length ?? 0 };
   });
+
+// Generates a full, symmetric measuring template (left/right sides, one row per
+// attachment point per group) so a technician can measure a wing directly in the
+// app without importing anything.
+const templateInput = z.object({
+  model_id: z.string().uuid(),
+  replace: z.boolean().default(true),
+  main_length_mm: z.number().positive().max(20000),
+  tolerance_mm: z.number().min(0).max(500).default(10),
+  group_drop_mm: z.number().min(0).max(2000).default(150),
+  point_drop_mm: z.number().min(0).max(2000).default(30),
+  points: z.object({
+    A: z.number().int().min(0).max(12).default(4),
+    B: z.number().int().min(0).max(12).default(4),
+    C: z.number().int().min(0).max(12).default(3),
+    D: z.number().int().min(0).max(12).default(0),
+    BR: z.number().int().min(0).max(12).default(2),
+    STAB: z.number().int().min(0).max(12).default(0),
+  }),
+});
+
+export const generateStandardTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => templateInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const order: Array<"A" | "B" | "C" | "D" | "BR" | "STAB"> = ["A", "B", "C", "D", "BR", "STAB"];
+    const rows: Array<{
+      model_id: string;
+      line_group: "A" | "B" | "C" | "D" | "BR" | "STAB";
+      row_index: number;
+      point_index: number;
+      side: "left" | "right";
+      label: string;
+      factory_length_mm: number;
+      tolerance_mm: number;
+      sort_order: number;
+    }> = [];
+    let sort = 0;
+    let groupRow = 0;
+    for (const g of order) {
+      const n = data.points[g] ?? 0;
+      if (n <= 0) continue;
+      groupRow += 1;
+      for (let p = 1; p <= n; p++) {
+        const base =
+          data.main_length_mm - (groupRow - 1) * data.group_drop_mm - (p - 1) * data.point_drop_mm;
+        for (const side of ["left", "right"] as const) {
+          rows.push({
+            model_id: data.model_id,
+            line_group: g,
+            row_index: groupRow,
+            point_index: p,
+            side,
+            label: `${g}${p}${side === "left" ? "L" : "R"}`,
+            factory_length_mm: Math.max(100, Math.round(base * 10) / 10),
+            tolerance_mm: data.tolerance_mm,
+            sort_order: sort++,
+          });
+        }
+      }
+    }
+    if (rows.length === 0) throw new Error("Template would be empty — set at least one group point count");
+    if (data.replace) {
+      const { error } = await context.supabase.from("line_specs").delete().eq("model_id", data.model_id);
+      if (error) throw new Error(error.message);
+    }
+    const { data: inserted, error } = await context.supabase
+      .from("line_specs")
+      .upsert(rows, { onConflict: "model_id,label" })
+      .select("id");
+    if (error) throw new Error(error.message);
+    return { count: inserted?.length ?? 0 };
+  });

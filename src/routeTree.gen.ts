@@ -17,17 +17,17 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
-import { Route as AuthenticatedWingsRouteImport } from './routes/_authenticated/wings'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
-import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
 import { Route as AuthenticatedDatabaseRouteImport } from './routes/_authenticated/database'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedWingsIdRouteImport } from './routes/_authenticated/wings.$id'
+import { Route as AuthenticatedWingsIndexRouteImport } from './routes/_authenticated/wings.index'
+import { Route as AuthenticatedSessionsIndexRouteImport } from './routes/_authenticated/sessions.index'
+import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models.index'
 import { Route as AuthenticatedSessionsIdRouteImport } from './routes/_authenticated/sessions.$id'
 import { Route as AuthenticatedModelsIdRouteImport } from './routes/_authenticated/models.$id'
+import { Route as AuthenticatedWingsIdIndexRouteImport } from './routes/_authenticated/wings.$id.index'
 import { Route as AuthenticatedWingsIdHistoryRouteImport } from './routes/_authenticated/wings.$id.history'
 
 const VisionRoute = VisionRouteImport.update({
@@ -69,11 +69,6 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedWingsRoute = AuthenticatedWingsRouteImport.update({
-  id: '/wings',
-  path: '/wings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -82,16 +77,6 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
-  id: '/models',
-  path: '/models',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMaterialsRoute = AuthenticatedMaterialsRouteImport.update({
@@ -109,26 +94,44 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedWingsIdRoute = AuthenticatedWingsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedWingsRoute,
+const AuthenticatedWingsIndexRoute = AuthenticatedWingsIndexRouteImport.update({
+  id: '/wings/',
+  path: '/wings/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSessionsIndexRoute =
+  AuthenticatedSessionsIndexRouteImport.update({
+    id: '/sessions/',
+    path: '/sessions/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedModelsIndexRoute =
+  AuthenticatedModelsIndexRouteImport.update({
+    id: '/models/',
+    path: '/models/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSessionsIdRoute = AuthenticatedSessionsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedSessionsRoute,
+  id: '/sessions/$id',
+  path: '/sessions/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedModelsIdRoute = AuthenticatedModelsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedModelsRoute,
+  id: '/models/$id',
+  path: '/models/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWingsIdIndexRoute =
+  AuthenticatedWingsIdIndexRouteImport.update({
+    id: '/wings/$id/',
+    path: '/wings/$id/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWingsIdHistoryRoute =
   AuthenticatedWingsIdHistoryRouteImport.update({
-    id: '/history',
-    path: '/history',
-    getParentRoute: () => AuthenticatedWingsIdRoute,
+    id: '/wings/$id/history',
+    path: '/wings/$id/history',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -141,16 +144,16 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
   '/materials': typeof AuthenticatedMaterialsRoute
-  '/models': typeof AuthenticatedModelsRouteWithChildren
-  '/sessions': typeof AuthenticatedSessionsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
-  '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/models/': typeof AuthenticatedModelsIndexRoute
+  '/sessions/': typeof AuthenticatedSessionsIndexRoute
+  '/wings/': typeof AuthenticatedWingsIndexRoute
   '/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
+  '/wings/$id/': typeof AuthenticatedWingsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -162,16 +165,16 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
   '/materials': typeof AuthenticatedMaterialsRoute
-  '/models': typeof AuthenticatedModelsRouteWithChildren
-  '/sessions': typeof AuthenticatedSessionsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
-  '/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/models/$id': typeof AuthenticatedModelsIdRoute
   '/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/models': typeof AuthenticatedModelsIndexRoute
+  '/sessions': typeof AuthenticatedSessionsIndexRoute
+  '/wings': typeof AuthenticatedWingsIndexRoute
   '/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
+  '/wings/$id': typeof AuthenticatedWingsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,16 +188,16 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/database': typeof AuthenticatedDatabaseRoute
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
-  '/_authenticated/models': typeof AuthenticatedModelsRouteWithChildren
-  '/_authenticated/sessions': typeof AuthenticatedSessionsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
-  '/_authenticated/wings': typeof AuthenticatedWingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/_authenticated/models/$id': typeof AuthenticatedModelsIdRoute
   '/_authenticated/sessions/$id': typeof AuthenticatedSessionsIdRoute
-  '/_authenticated/wings/$id': typeof AuthenticatedWingsIdRouteWithChildren
+  '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
+  '/_authenticated/sessions/': typeof AuthenticatedSessionsIndexRoute
+  '/_authenticated/wings/': typeof AuthenticatedWingsIndexRoute
   '/_authenticated/wings/$id/history': typeof AuthenticatedWingsIdHistoryRoute
+  '/_authenticated/wings/$id/': typeof AuthenticatedWingsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -208,16 +211,16 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/database'
     | '/materials'
-    | '/models'
-    | '/sessions'
     | '/settings'
     | '/users'
-    | '/wings'
     | '/share/$token'
     | '/models/$id'
     | '/sessions/$id'
-    | '/wings/$id'
+    | '/models/'
+    | '/sessions/'
+    | '/wings/'
     | '/wings/$id/history'
+    | '/wings/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -229,16 +232,16 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/database'
     | '/materials'
-    | '/models'
-    | '/sessions'
     | '/settings'
     | '/users'
-    | '/wings'
     | '/share/$token'
     | '/models/$id'
     | '/sessions/$id'
-    | '/wings/$id'
+    | '/models'
+    | '/sessions'
+    | '/wings'
     | '/wings/$id/history'
+    | '/wings/$id'
   id:
     | '__root__'
     | '/'
@@ -251,16 +254,16 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/database'
     | '/_authenticated/materials'
-    | '/_authenticated/models'
-    | '/_authenticated/sessions'
     | '/_authenticated/settings'
     | '/_authenticated/users'
-    | '/_authenticated/wings'
     | '/share/$token'
     | '/_authenticated/models/$id'
     | '/_authenticated/sessions/$id'
-    | '/_authenticated/wings/$id'
+    | '/_authenticated/models/'
+    | '/_authenticated/sessions/'
+    | '/_authenticated/wings/'
     | '/_authenticated/wings/$id/history'
+    | '/_authenticated/wings/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -332,13 +335,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/wings': {
-      id: '/_authenticated/wings'
-      path: '/wings'
-      fullPath: '/wings'
-      preLoaderRoute: typeof AuthenticatedWingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/users': {
       id: '/_authenticated/users'
       path: '/users'
@@ -351,20 +347,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/sessions': {
-      id: '/_authenticated/sessions'
-      path: '/sessions'
-      fullPath: '/sessions'
-      preLoaderRoute: typeof AuthenticatedSessionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/models': {
-      id: '/_authenticated/models'
-      path: '/models'
-      fullPath: '/models'
-      preLoaderRoute: typeof AuthenticatedModelsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/materials': {
@@ -388,103 +370,86 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/wings/$id': {
-      id: '/_authenticated/wings/$id'
-      path: '/$id'
-      fullPath: '/wings/$id'
-      preLoaderRoute: typeof AuthenticatedWingsIdRouteImport
-      parentRoute: typeof AuthenticatedWingsRoute
+    '/_authenticated/wings/': {
+      id: '/_authenticated/wings/'
+      path: '/wings'
+      fullPath: '/wings/'
+      preLoaderRoute: typeof AuthenticatedWingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sessions/': {
+      id: '/_authenticated/sessions/'
+      path: '/sessions'
+      fullPath: '/sessions/'
+      preLoaderRoute: typeof AuthenticatedSessionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/models/': {
+      id: '/_authenticated/models/'
+      path: '/models'
+      fullPath: '/models/'
+      preLoaderRoute: typeof AuthenticatedModelsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sessions/$id': {
       id: '/_authenticated/sessions/$id'
-      path: '/$id'
+      path: '/sessions/$id'
       fullPath: '/sessions/$id'
       preLoaderRoute: typeof AuthenticatedSessionsIdRouteImport
-      parentRoute: typeof AuthenticatedSessionsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/models/$id': {
       id: '/_authenticated/models/$id'
-      path: '/$id'
+      path: '/models/$id'
       fullPath: '/models/$id'
       preLoaderRoute: typeof AuthenticatedModelsIdRouteImport
-      parentRoute: typeof AuthenticatedModelsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/wings/$id/': {
+      id: '/_authenticated/wings/$id/'
+      path: '/wings/$id'
+      fullPath: '/wings/$id/'
+      preLoaderRoute: typeof AuthenticatedWingsIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/wings/$id/history': {
       id: '/_authenticated/wings/$id/history'
-      path: '/history'
+      path: '/wings/$id/history'
       fullPath: '/wings/$id/history'
       preLoaderRoute: typeof AuthenticatedWingsIdHistoryRouteImport
-      parentRoute: typeof AuthenticatedWingsIdRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
-
-interface AuthenticatedModelsRouteChildren {
-  AuthenticatedModelsIdRoute: typeof AuthenticatedModelsIdRoute
-}
-
-const AuthenticatedModelsRouteChildren: AuthenticatedModelsRouteChildren = {
-  AuthenticatedModelsIdRoute: AuthenticatedModelsIdRoute,
-}
-
-const AuthenticatedModelsRouteWithChildren =
-  AuthenticatedModelsRoute._addFileChildren(AuthenticatedModelsRouteChildren)
-
-interface AuthenticatedSessionsRouteChildren {
-  AuthenticatedSessionsIdRoute: typeof AuthenticatedSessionsIdRoute
-}
-
-const AuthenticatedSessionsRouteChildren: AuthenticatedSessionsRouteChildren = {
-  AuthenticatedSessionsIdRoute: AuthenticatedSessionsIdRoute,
-}
-
-const AuthenticatedSessionsRouteWithChildren =
-  AuthenticatedSessionsRoute._addFileChildren(
-    AuthenticatedSessionsRouteChildren,
-  )
-
-interface AuthenticatedWingsIdRouteChildren {
-  AuthenticatedWingsIdHistoryRoute: typeof AuthenticatedWingsIdHistoryRoute
-}
-
-const AuthenticatedWingsIdRouteChildren: AuthenticatedWingsIdRouteChildren = {
-  AuthenticatedWingsIdHistoryRoute: AuthenticatedWingsIdHistoryRoute,
-}
-
-const AuthenticatedWingsIdRouteWithChildren =
-  AuthenticatedWingsIdRoute._addFileChildren(AuthenticatedWingsIdRouteChildren)
-
-interface AuthenticatedWingsRouteChildren {
-  AuthenticatedWingsIdRoute: typeof AuthenticatedWingsIdRouteWithChildren
-}
-
-const AuthenticatedWingsRouteChildren: AuthenticatedWingsRouteChildren = {
-  AuthenticatedWingsIdRoute: AuthenticatedWingsIdRouteWithChildren,
-}
-
-const AuthenticatedWingsRouteWithChildren =
-  AuthenticatedWingsRoute._addFileChildren(AuthenticatedWingsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDatabaseRoute: typeof AuthenticatedDatabaseRoute
   AuthenticatedMaterialsRoute: typeof AuthenticatedMaterialsRoute
-  AuthenticatedModelsRoute: typeof AuthenticatedModelsRouteWithChildren
-  AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
-  AuthenticatedWingsRoute: typeof AuthenticatedWingsRouteWithChildren
+  AuthenticatedModelsIdRoute: typeof AuthenticatedModelsIdRoute
+  AuthenticatedSessionsIdRoute: typeof AuthenticatedSessionsIdRoute
+  AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
+  AuthenticatedSessionsIndexRoute: typeof AuthenticatedSessionsIndexRoute
+  AuthenticatedWingsIndexRoute: typeof AuthenticatedWingsIndexRoute
+  AuthenticatedWingsIdHistoryRoute: typeof AuthenticatedWingsIdHistoryRoute
+  AuthenticatedWingsIdIndexRoute: typeof AuthenticatedWingsIdIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDatabaseRoute: AuthenticatedDatabaseRoute,
   AuthenticatedMaterialsRoute: AuthenticatedMaterialsRoute,
-  AuthenticatedModelsRoute: AuthenticatedModelsRouteWithChildren,
-  AuthenticatedSessionsRoute: AuthenticatedSessionsRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
-  AuthenticatedWingsRoute: AuthenticatedWingsRouteWithChildren,
+  AuthenticatedModelsIdRoute: AuthenticatedModelsIdRoute,
+  AuthenticatedSessionsIdRoute: AuthenticatedSessionsIdRoute,
+  AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
+  AuthenticatedSessionsIndexRoute: AuthenticatedSessionsIndexRoute,
+  AuthenticatedWingsIndexRoute: AuthenticatedWingsIndexRoute,
+  AuthenticatedWingsIdHistoryRoute: AuthenticatedWingsIdHistoryRoute,
+  AuthenticatedWingsIdIndexRoute: AuthenticatedWingsIdIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

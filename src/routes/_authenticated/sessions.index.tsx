@@ -21,7 +21,7 @@ const allSessionsQuery = queryOptions({ queryKey: ["all-sessions"], queryFn: () 
 const modelsQuery = queryOptions({ queryKey: ["models"], queryFn: () => listModels() });
 const meProfileQuery = queryOptions({ queryKey: ["my-profile"], queryFn: () => getMyProfile() });
 
-export const Route = createFileRoute("/_authenticated/sessions")({
+export const Route = createFileRoute("/_authenticated/sessions/")({
   component: SessionsPage,
   loader: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meAdminQuery);
