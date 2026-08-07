@@ -121,6 +121,15 @@ function SessionDetail() {
 
   const readOnly = session.status !== "draft";
 
+  // Two-phase workflow: 1) measure (diagram + compact sheet only), 2) results
+  // (deviations, per-group stats, AoI analysis and loop proposals).
+  const [phase, setPhase] = useState<"measure" | "results">(
+    session.status === "draft" ? "measure" : "results",
+  );
+  useEffect(() => {
+    setPhase(session.status === "draft" ? "measure" : "results");
+  }, [session.status]);
+
   const statusMut = useMutation({
     mutationFn: (status: "draft" | "complete" | "published") =>
       updateSession({ data: { id, status } }),
@@ -515,6 +524,87 @@ function SessionDetail() {
       />
 
       <div className="p-8 space-y-6">
+        {/* Phase switch */}
+        <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          <button
+            onClick={() => setPhase("measure")}
+            className={`rounded px-3 py-1.5 font-medium ${phase === "measure" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}
+          >
+            1 · Measure
+          </button>
+          <button
+            onClick={() => setPhase("results")}
+            disabled={measuredCount === 0}
+            className={`rounded px-3 py-1.5 font-medium disabled:opacity-40 ${phase === "results" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}
+          >
+            2 · Results &amp; loops
+          </button>
+        </div>
+
+        {phase === "measure" ? (
+          grouped.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-12 text-center">
+              <p className="text-muted-foreground">This model has no measuring template yet.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Generate a standard left/right sheet now, or build the linemap on{" "}
+                <Link to="/models/$id" params={{ id: wing.model.id }} className="underline">the model page</Link>.
+              </p>
+              <Button className="mt-4" onClick={() => setTemplateOpen(true)}>
+                Generate measuring template
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+              <div className="lg:sticky lg:top-4 space-y-2">
+                <WingDiagram
+                  rows={templateRows.map((r) => ({
+                    id: r.id,
+                    label: r.label,
+                    line_group: r.line_group,
+                    side: r.side,
+                    point_index: r.point_index,
+                    cls: r.cls,
+                  }))}
+                  activeId={activeLineId}
+                  onSelect={(lineId) => {
+                    setActiveLineId(lineId);
+                    document.getElementById(`line-${lineId}`)?.querySelector("input")?.focus();
+                  }}
+                />
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="font-mono text-xs text-muted-foreground tabular-nums">
+                    {measuredCount} / {totalLines} lines measured
+                  </div>
+                  <Button
+                    className="mt-2 w-full"
+                    size="sm"
+                    disabled={measuredCount === 0}
+                    onClick={() => setPhase("results")}
+                  >
+                    Save &amp; show results
+                  </Button>
+                </div>
+              </div>
+              <div className="max-h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+                <MeasureTemplate
+                  compact
+                  rows={templateRows}
+                  readOnly={readOnly}
+                  laserOn={laserOn}
+                  laserBusy={laserBusy}
+                  onChange={onChange}
+                  activeId={activeLineId}
+                  onActive={setActiveLineId}
+                  onReadLaser={(lineId) => {
+                    const row = rows.find((r) => r.line.id === lineId);
+                    readLaserFor(lineId, row?.tol ?? 10);
+                  }}
+                />
+              </div>
+            </div>
+          )
+        ) : (
+        <>
         <EstimatesDisclaimer />
         {/* Summary */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
@@ -545,51 +635,6 @@ function SessionDetail() {
 
         <LoopSimulator rows={simulatorRows} loopTypes={loopTypes} shortenings={shortenings} />
 
-        {/* Measurement grid */}
-        {grouped.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-12 text-center">
-            <p className="text-muted-foreground">This model has no measuring template yet.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Generate a standard left/right sheet now, or build the linemap on{" "}
-              <Link to="/models/$id" params={{ id: wing.model.id }} className="underline">the model page</Link>.
-            </p>
-            <Button className="mt-4" onClick={() => setTemplateOpen(true)}>
-              Generate measuring template
-            </Button>
-          </div>
-        ) : (
-          <>
-          <WingDiagram
-            rows={templateRows.map((r) => ({
-              id: r.id,
-              label: r.label,
-              line_group: r.line_group,
-              side: r.side,
-              point_index: r.point_index,
-              cls: r.cls,
-            }))}
-            activeId={activeLineId}
-            onSelect={(id) => {
-              setActiveLineId(id);
-              document.getElementById(`line-${id}`)?.querySelector("input")?.focus();
-            }}
-          />
-          <MeasureTemplate
-            rows={templateRows}
-            readOnly={readOnly}
-            laserOn={laserOn}
-            laserBusy={laserBusy}
-            onChange={onChange}
-            activeId={activeLineId}
-            onActive={setActiveLineId}
-            onReadLaser={(lineId) => {
-              const row = rows.find((r) => r.line.id === lineId);
-              readLaserFor(lineId, row?.tol ?? 10);
-            }}
-          />
-          </>
-        )}
-
         {/* Notes */}
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="text-sm font-semibold mb-2">Notes</h3>
@@ -608,6 +653,8 @@ function SessionDetail() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       <FinishSessionDialog
