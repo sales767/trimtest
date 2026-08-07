@@ -9,6 +9,32 @@ const protocolQuery = (token: string) =>
 
 export const Route = createFileRoute("/share/$token")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(protocolQuery(params.token)),
+  head: ({ params, loaderData }) => {
+    const wing = (loaderData as { session?: { session_date?: string; wing?: { serial_number?: string; model?: { brand?: string; name?: string; size?: string | null } } } } | undefined)
+      ?.session?.wing;
+    const model = wing?.model;
+    const label = model
+      ? `${model.brand ?? ""} ${model.name ?? ""}${model.size ? ` ${model.size}` : ""}`.trim()
+      : null;
+    const title = label
+      ? `${label} — trim-test protocol${wing?.serial_number ? ` · SN ${wing.serial_number}` : ""}`
+      : "Measurement protocol — Niviuk Measure";
+    const description = label
+      ? `Line-by-line measurement protocol for a ${label}: measured lengths, factory specs and deviations.`
+      : "Read-only paraglider line-measurement protocol published from Niviuk Measure.";
+    return {
+      meta: [
+        { title: title.slice(0, 70) },
+        { name: "description", content: description },
+        { property: "og:title", content: title.slice(0, 70) },
+        { property: "og:description", content: description },
+        { property: "og:url", content: `https://trimtest.lovable.app/share/${params.token}` },
+        { property: "og:type", content: "article" },
+        { name: "robots", content: "noindex" },
+      ],
+      links: [{ rel: "canonical", href: `https://trimtest.lovable.app/share/${params.token}` }],
+    };
+  },
   component: PublicProtocol,
   errorComponent: ({ error }) => (
     <div className="min-h-screen flex items-center justify-center p-8 bg-background">
