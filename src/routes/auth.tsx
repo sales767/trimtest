@@ -9,6 +9,24 @@ import { toast } from "sonner";
 import { Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign in — Niviuk Measure" },
+      {
+        name: "description",
+        content:
+          "Sign in to Niviuk Measure to record line measurements, review deviations and publish trim-test protocols.",
+      },
+      { property: "og:title", content: "Sign in — Niviuk Measure" },
+      {
+        property: "og:description",
+        content: "Technician access to the Niviuk paraglider trim-testing workspace.",
+      },
+      { property: "og:url", content: "https://trimtest.lovable.app/auth" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/auth" }],
+  }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getUser();

@@ -5,8 +5,26 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "FAQ · Trim test" },
+      { title: "FAQ — Niviuk Measure trim testing" },
       { name: "description", content: "Common questions about the paraglider line-measurement workflow." },
+      { property: "og:title", content: "FAQ — Niviuk Measure trim testing" },
+      { property: "og:description", content: "Accuracy, implausible readings, partial re-measures and published protocols explained." },
+      { property: "og:url", content: "https://trimtest.lovable.app/faq" },
+    ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/faq" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: items.map((it) => ({
+            "@type": "Question",
+            name: it.q,
+            acceptedAnswer: { "@type": "Answer", text: it.a },
+          })),
+        }),
+      },
     ],
   }),
   component: FaqPage,

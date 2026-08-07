@@ -5,8 +5,31 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 export const Route = createFileRoute("/manual")({
   head: () => ({
     meta: [
-      { title: "Manual · Trim test" },
+      { title: "Manual — How to run a trim test" },
       { name: "description", content: "How to set up, capture, review and publish a paraglider line-measurement session." },
+      { property: "og:title", content: "Manual — How to run a trim test" },
+      { property: "og:description", content: "Step-by-step: prepare the wing, capture line lengths, review deviations and publish the protocol." },
+      { property: "og:url", content: "https://trimtest.lovable.app/manual" },
+    ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/manual" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          name: "How to run a paraglider trim test with Niviuk Measure",
+          description:
+            "Prepare the wing, capture every line length, review deviations against factory specs and publish the protocol.",
+          step: sections.map((s, i) => ({
+            "@type": "HowToStep",
+            position: i + 1,
+            name: s.title,
+            text: s.body,
+            url: `https://trimtest.lovable.app/manual#${s.id}`,
+          })),
+        }),
+      },
     ],
   }),
   component: ManualPage,

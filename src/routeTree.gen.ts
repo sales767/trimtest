@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VisionRouteImport } from './routes/vision'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -33,6 +34,11 @@ import { Route as AuthenticatedWingsIdHistoryRouteImport } from './routes/_authe
 const VisionRoute = VisionRouteImport.update({
   id: '/vision',
   path: '/vision',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManualRoute = ManualRouteImport.update({
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/feed': typeof FeedRoute
   '/manual': typeof ManualRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/feed': typeof FeedRoute
   '/manual': typeof ManualRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/database': typeof AuthenticatedDatabaseRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/feed': typeof FeedRoute
   '/manual': typeof ManualRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/database': typeof AuthenticatedDatabaseRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/feed'
     | '/manual'
+    | '/sitemap.xml'
     | '/vision'
     | '/dashboard'
     | '/database'
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/feed'
     | '/manual'
+    | '/sitemap.xml'
     | '/vision'
     | '/dashboard'
     | '/database'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/feed'
     | '/manual'
+    | '/sitemap.xml'
     | '/vision'
     | '/_authenticated/dashboard'
     | '/_authenticated/database'
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   FeedRoute: typeof FeedRoute
   ManualRoute: typeof ManualRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VisionRoute: typeof VisionRoute
   ShareTokenRoute: typeof ShareTokenRoute
 }
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/vision'
       fullPath: '/vision'
       preLoaderRoute: typeof VisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manual': {
@@ -462,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   FeedRoute: FeedRoute,
   ManualRoute: ManualRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   VisionRoute: VisionRoute,
   ShareTokenRoute: ShareTokenRoute,
 }

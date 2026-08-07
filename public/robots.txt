@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /sessions
+Disallow: /models
+Disallow: /wings
+Disallow: /materials
+Disallow: /settings
+Disallow: /users
+Disallow: /database
+
+Sitemap: https://trimtest.lovable.app/sitemap.xml

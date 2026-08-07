@@ -81,14 +81,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Trim test" },
       { name: "description", content: "Internal tool to measure paraglider lines against factory specifications." },
       { name: "author", content: "Niviuk" },
-      { property: "og:title", content: "Trim test" },
-      { property: "og:description", content: "Internal tool to measure paraglider lines against factory specifications." },
+      { property: "og:site_name", content: "Niviuk Measure" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Trim test" },
-      { name: "twitter:description", content: "Internal tool to measure paraglider lines against factory specifications." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c3af93dd-b780-48f9-8688-48e27d45406f/id-preview-b1e0deae--27c7e110-a441-41a8-a3c3-fc76b10466a6.lovable.app-1783936549571.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c3af93dd-b780-48f9-8688-48e27d45406f/id-preview-b1e0deae--27c7e110-a441-41a8-a3c3-fc76b10466a6.lovable.app-1783936549571.png" },
     ],
     links: [
       {
@@ -96,6 +91,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://trimtest.lovable.app/#organization",
+              name: "Niviuk",
+              url: "https://trimtest.lovable.app",
+              description:
+                "Paraglider manufacturer running in-house trim testing on every wing that leaves the workshop.",
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://trimtest.lovable.app/#website",
+              name: "Niviuk Measure",
+              url: "https://trimtest.lovable.app",
+              description:
+                "Paraglider line-measurement and trim-testing tool: compare measured line lengths against factory specs and get loop corrections.",
+              publisher: { "@id": "https://trimtest.lovable.app/#organization" },
+            },
+          ],
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,

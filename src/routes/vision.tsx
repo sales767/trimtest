@@ -4,9 +4,13 @@ import { Gauge } from "lucide-react";
 export const Route = createFileRoute("/vision")({
   head: () => ({
     meta: [
-      { title: "Vision · Trim test" },
+      { title: "Vision — Niviuk Measure" },
       { name: "description", content: "Why this tool exists: measurable trust in every wing that leaves the workshop." },
+      { property: "og:title", content: "Vision — Niviuk Measure" },
+      { property: "og:description", content: "Measurable trust in every paraglider that leaves the Niviuk workshop." },
+      { property: "og:url", content: "https://trimtest.lovable.app/vision" },
     ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/vision" }],
   }),
   component: VisionPage,
 });

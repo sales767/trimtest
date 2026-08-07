@@ -4,6 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Gauge, Database, Share2, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Niviuk Measure — Paraglider trim testing" },
+      {
+        name: "description",
+        content:
+          "Measure paraglider line lengths, compare them against factory specs and get loop corrections — the in-house trim-testing tool at Niviuk.",
+      },
+      { property: "og:title", content: "Niviuk Measure — Paraglider trim testing" },
+      {
+        property: "og:description",
+        content:
+          "Measure paraglider line lengths, compare them against factory specs and get loop corrections.",
+      },
+      { property: "og:url", content: "https://trimtest.lovable.app/" },
+      { name: "twitter:title", content: "Niviuk Measure — Paraglider trim testing" },
+      {
+        name: "twitter:description",
+        content:
+          "Measure paraglider line lengths, compare them against factory specs and get loop corrections.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/" }],
+  }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getUser();
@@ -84,7 +108,7 @@ function Landing() {
             style={{ boxShadow: "var(--shadow-panel)" }}
           >
             <f.icon className="h-6 w-6 text-primary" />
-            <h3 className="mt-4 font-semibold">{f.title}</h3>
+            <h2 className="mt-4 font-semibold">{f.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
           </div>
         ))}
