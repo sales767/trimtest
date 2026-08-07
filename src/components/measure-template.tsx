@@ -47,6 +47,7 @@ export function MeasureTemplate({
   onReadLaser,
   activeId,
   onActive,
+  compact = false,
 }: {
   rows: TemplateRow[];
   readOnly: boolean;
@@ -56,6 +57,7 @@ export function MeasureTemplate({
   onReadLaser?: (lineId: string) => void;
   activeId?: string | null;
   onActive?: (lineId: string) => void;
+  compact?: boolean;
 }) {
   const inputs = useRef<HTMLInputElement[]>([]);
   inputs.current = [];
@@ -79,7 +81,7 @@ export function MeasureTemplate({
   const groups = Array.from(new Set(rows.map((r) => r.line_group)));
 
   return (
-    <div className="space-y-6">
+    <div className={compact ? "space-y-2" : "space-y-6"}>
       {groups.map((g) => {
         const items = rows.filter((r) => r.line_group === g);
         // Group by attachment point so left/right sit on the same visual row.
@@ -89,20 +91,22 @@ export function MeasureTemplate({
         const done = items.filter((r) => r.dev !== null).length;
         return (
           <section key={g} className="rounded-lg border border-border bg-card overflow-hidden" style={{ boxShadow: "var(--shadow-panel)" }}>
-            <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-2">
-              <h2 className="text-sm font-semibold uppercase tracking-widest">
+            <header className={`flex items-center justify-between gap-3 border-b border-border bg-muted/40 ${compact ? "px-2 py-1" : "px-4 py-2"}`}>
+              <h2 className={`font-semibold uppercase tracking-widest ${compact ? "text-[11px]" : "text-sm"}`}>
                 {g === "BR" ? "Brakes" : g === "STAB" ? "Stabilo" : `Row ${g}`}
               </h2>
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className={`text-muted-foreground tabular-nums ${compact ? "text-[10px]" : "text-xs"}`}>
                 {done}/{items.length} measured
               </span>
             </header>
             <div className="divide-y divide-border">
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-4 py-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                <div>Left</div>
-                <div className="w-28 text-center">Point · factory</div>
-                <div className="text-right">Right</div>
-              </div>
+              {!compact && (
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-4 py-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <div>Left</div>
+                  <div className="w-28 text-center">Point · factory</div>
+                  <div className="text-right">Right</div>
+                </div>
+              )}
               {keys.map((k) => {
                 const left = items.find(
                   (r) => String(r.point_index ?? r.label.replace(/[LR]$/, "")) === k && r.side === "left",
@@ -118,15 +122,15 @@ export function MeasureTemplate({
                 const pointLabel =
                   (left ?? right)?.point_index != null ? `${g}${(left ?? right)!.point_index}` : (single?.label ?? `${g}${k}`);
                 return (
-                  <div key={`${g}-${k}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2">
-                    <Cell row={left ?? single} align="left" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
-                    <div className="w-28 text-center">
-                      <div className="font-mono text-sm font-semibold">{pointLabel}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                        {factory.toFixed(0)} ± {tol.toFixed(0)}
+                  <div key={`${g}-${k}`} className={`grid grid-cols-[1fr_auto_1fr] items-center ${compact ? "gap-1 px-2 py-0.5" : "gap-2 px-4 py-2"}`}>
+                    <Cell row={left ?? single} align="left" compact={compact} readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
+                    <div className={compact ? "w-16 text-center" : "w-28 text-center"}>
+                      <div className={`font-mono font-semibold ${compact ? "text-[11px] leading-tight" : "text-sm"}`}>{pointLabel}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground tabular-nums leading-tight">
+                        {factory.toFixed(0)}{compact ? "" : ` ± ${tol.toFixed(0)}`}
                       </div>
                     </div>
-                    <Cell row={right} align="right" readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
+                    <Cell row={right} align="right" compact={compact} readOnly={readOnly} laserOn={laserOn} laserBusy={laserBusy} onChange={onChange} onReadLaser={onReadLaser} register={register} onKeyDown={onKeyDown} activeId={activeId} onActive={onActive} />
                   </div>
                 );
               })}
