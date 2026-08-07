@@ -121,6 +121,15 @@ function SessionDetail() {
 
   const readOnly = session.status !== "draft";
 
+  // Two-phase workflow: 1) measure (diagram + compact sheet only), 2) results
+  // (deviations, per-group stats, AoI analysis and loop proposals).
+  const [phase, setPhase] = useState<"measure" | "results">(
+    session.status === "draft" ? "measure" : "results",
+  );
+  useEffect(() => {
+    setPhase(session.status === "draft" ? "measure" : "results");
+  }, [session.status]);
+
   const statusMut = useMutation({
     mutationFn: (status: "draft" | "complete" | "published") =>
       updateSession({ data: { id, status } }),
