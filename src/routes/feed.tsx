@@ -9,9 +9,13 @@ export const Route = createFileRoute("/feed")({
   loader: ({ context }) => context.queryClient.ensureQueryData(feedQuery),
   head: () => ({
     meta: [
-      { title: "Published protocols · Trim test" },
+      { title: "Published protocols — Niviuk Measure" },
       { name: "description", content: "Anonymised feed of recent measurement protocols published by the Niviuk workshop." },
+      { property: "og:title", content: "Published protocols — Niviuk Measure" },
+      { property: "og:description", content: "Recent anonymised paraglider trim-test protocols from the Niviuk workshop." },
+      { property: "og:url", content: "https://trimtest.lovable.app/feed" },
     ],
+    links: [{ rel: "canonical", href: "https://trimtest.lovable.app/feed" }],
   }),
   component: FeedPage,
 });
