@@ -145,6 +145,7 @@ export function MeasureTemplate({
 function Cell({
   row,
   align,
+  compact = false,
   readOnly,
   laserOn,
   laserBusy,
@@ -157,6 +158,7 @@ function Cell({
 }: {
   row?: TemplateRow;
   align: "left" | "right";
+  compact?: boolean;
   readOnly: boolean;
   laserOn?: boolean;
   laserBusy?: string | null;
@@ -173,9 +175,9 @@ function Cell({
     <div
       id={`line-${row.id}`}
       onMouseEnter={() => onActive?.(row.id)}
-      className={`rounded-md border px-2 py-1.5 transition-shadow ${CELL_TONE[row.cls]} ${isActive ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+      className={`rounded-md border transition-shadow ${compact ? "px-1 py-0.5" : "px-2 py-1.5"} ${CELL_TONE[row.cls]} ${isActive ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
     >
-      <div className={`flex items-center gap-2 ${align === "right" ? "flex-row-reverse" : ""}`}>
+      <div className={`flex items-center ${compact ? "gap-1" : "gap-2"} ${align === "right" ? "flex-row-reverse" : ""}`}>
         <Input
           ref={register}
           onKeyDown={onKeyDown}
@@ -187,16 +189,16 @@ function Cell({
           value={row.value}
           onChange={(e) => onChange(row.id, e.target.value)}
           placeholder="mm"
-          className="h-9 w-28 font-mono text-base tabular-nums"
+          className={compact ? "h-7 w-20 px-1.5 font-mono text-xs tabular-nums" : "h-9 w-28 font-mono text-base tabular-nums"}
         />
         <div className={`min-w-0 flex-1 ${align === "right" ? "text-left" : "text-right"}`}>
-          <div className={`font-mono text-xs tabular-nums ${TEXT_TONE[row.cls]}`}>
+          <div className={`font-mono tabular-nums ${compact ? "text-[10px] leading-tight" : "text-xs"} ${TEXT_TONE[row.cls]}`}>
             {row.dev === null ? "—" : `${row.dev >= 0 ? "+" : ""}${row.dev.toFixed(1)} mm`}
             {row.flagged && (
               <AlertTriangle className="ml-1 inline h-3 w-3 text-amber-600 dark:text-amber-400" aria-label={row.flagReason} />
             )}
           </div>
-          {row.suggestion && row.cls !== "ok" && row.dev !== null && (
+          {!compact && row.suggestion && row.cls !== "ok" && row.dev !== null && (
             <div className="truncate font-mono text-[10px] text-muted-foreground">
               loop: {row.suggestion.name} (−{row.suggestion.shortening.toFixed(0)})
             </div>
@@ -206,7 +208,7 @@ function Cell({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className={compact ? "h-6 w-6 shrink-0" : "h-8 w-8 shrink-0"}
             disabled={laserBusy === row.id}
             onClick={() => onReadLaser(row.id)}
             title="Read laser"
@@ -215,7 +217,7 @@ function Cell({
           </Button>
         )}
       </div>
-      <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.label}</div>
+      {!compact && <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.label}</div>}
     </div>
   );
 }
